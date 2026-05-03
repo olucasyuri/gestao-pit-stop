@@ -19,6 +19,7 @@ const API_SECRET = process.env.API_SECRET;
  * @type {Record<string, string>}
  */
 const ROUTES = {
+  "health-check": "/health",
   "novo-aviso":           "/send/novo-aviso",
   "pitstop-pausas":       "/send/pitstop-pausas",
   "pitstop-folga":        "/send/pitstop-folga",

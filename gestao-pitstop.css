@@ -592,4 +592,162 @@ textarea:focus {
     opacity: 0;
   }
 }
+/* STATUS — CENTRAL NASA */
+
+.nasa-status-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 190px;
+  background:
+    radial-gradient(circle at 78% 22%, rgba(34,197,94,.20), transparent 26%),
+    linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+}
+
+.nasa-status-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,.85), transparent);
+  pointer-events: none;
+}
+
+.nasa-status-top,
+.nasa-status-footer {
+  position: relative;
+  z-index: 2;
+}
+
+.nasa-status-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nasa-status-top span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.nasa-status-card strong {
+  position: relative;
+  z-index: 2;
+  display: block;
+  margin-top: 22px;
+  font-family: "Syne", sans-serif;
+  font-size: 25px;
+}
+
+.nasa-status-card small {
+  position: relative;
+  z-index: 2;
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.nasa-radar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid rgba(34,197,94,.35);
+  position: relative;
+  background:
+    radial-gradient(circle, rgba(34,197,94,.35) 0 4px, transparent 5px),
+    radial-gradient(circle, rgba(34,197,94,.08), transparent 65%);
+  box-shadow: 0 0 28px rgba(34,197,94,.16);
+}
+
+.nasa-radar::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(34,197,94,.18);
+}
+
+.nasa-radar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(34,197,94,.65), transparent 38%);
+  animation: radarSweep 2.2s linear infinite;
+  mask-image: radial-gradient(circle, transparent 0 6px, #000 7px);
+}
+
+.nasa-radar span {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid rgba(34,197,94,.22);
+  animation: radarPulse 2.2s ease-out infinite;
+}
+
+.nasa-status-footer {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nasa-status-footer span:first-child {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.nasa-badge {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.nasa-badge.online {
+  color: #22c55e;
+  border-color: rgba(34,197,94,.35);
+  background: rgba(34,197,94,.10);
+}
+
+.nasa-badge.warning {
+  color: #facc15;
+  border-color: rgba(250,204,21,.35);
+  background: rgba(250,204,21,.10);
+}
+
+.nasa-badge.offline {
+  color: #ef4444;
+  border-color: rgba(239,68,68,.35);
+  background: rgba(239,68,68,.10);
+}
+
+@keyframes radarSweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes radarPulse {
+  0% {
+    transform: scale(.82);
+    opacity: .75;
+  }
+  80% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 }
