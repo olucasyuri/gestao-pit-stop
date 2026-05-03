@@ -13,7 +13,7 @@
    1. Configuração e instância do Supabase
    ========================================================================== */
 
-const SUPABASE_URL = "https://ffzzkjkhwylbskfxwmfc.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://ffzzkjkhwylbskfxwmfc.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_SsEK4XJzo6IUveI6ew1J8w_OJfxxRFk";
 
 /** @type {import("@supabase/supabase-js").SupabaseClient | null} */
