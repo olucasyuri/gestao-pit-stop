@@ -699,7 +699,6 @@ async function atualizarStatusSistema() {
   const titulo = document.getElementById("status-conexao");
   const desc = document.getElementById("status-descricao");
   const hora = document.getElementById("status-time");
-  const dot = document.querySelector(".status-dot");
   const badge = document.getElementById("status-badge");
   
 
@@ -732,10 +731,8 @@ async function atualizarStatusSistema() {
     minute: "2-digit"
   });
 
-  dot.className = "status-dot";
 
   if (hermesOk && bancoOk) {
-    dot.classList.add("online");
     titulo.textContent = "Ambiente Operacional";
     desc.textContent = "Tudo funcionando normalmente.";
     badge.className = "nasa-badge online";
@@ -743,7 +740,6 @@ async function atualizarStatusSistema() {
   }
 
   else if (hermesOk || bancoOk) {
-    dot.classList.add("warning");
     titulo.textContent = "Atenção Necessária";
     desc.textContent = "Algumas funções podem oscilar.";
     badge.className = "nasa-badge warning";
@@ -751,7 +747,6 @@ async function atualizarStatusSistema() {
   }
 
   else {
-    dot.classList.add("offline");
     titulo.textContent = "Serviço Indisponível";
     desc.textContent = "Contate o responsável técnico.";
     badge.className = "nasa-badge offline";
