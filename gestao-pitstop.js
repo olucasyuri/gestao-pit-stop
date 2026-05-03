@@ -732,25 +732,30 @@ async function atualizarStatusSistema() {
   });
 
 
+  const card = document.getElementById("status-card");
+
   if (hermesOk && bancoOk) {
     titulo.textContent = "Ambiente Operacional";
-    desc.textContent = "Tudo funcionando normalmente.";
-    badge.className = "nasa-badge online";
+    desc.textContent = "Todos os serviços ativos.";
+    badge.className = "status-badge online";
     badge.textContent = "ONLINE";
+    card.className = "status-card";
   }
 
   else if (hermesOk || bancoOk) {
     titulo.textContent = "Atenção Necessária";
     desc.textContent = "Algumas funções podem oscilar.";
-    badge.className = "nasa-badge warning";
+    badge.className = "status-badge warning";
     badge.textContent = "ATENÇÃO";
+    card.className = "status-card warning";
   }
 
   else {
     titulo.textContent = "Serviço Indisponível";
     desc.textContent = "Contate o responsável técnico.";
-    badge.className = "nasa-badge offline";
+    badge.className = "status-badge offline";
     badge.textContent = "OFFLINE";
+    card.className = "status-card offline";
   }
 
   hora.textContent = "Última atualização: " + agora;
