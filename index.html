@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão PIT STOP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="gestao-pitstop.css" />
+  </head>
+  <body>
+
+    <!-- ===== NAVEGAÇÃO ===== -->
+    <nav>
+      <div class="nav-inner">
+        <div class="brand">Gestão <span>PIT STOP</span></div>
+
+        <div class="tabs" role="tablist" aria-label="Seções do painel">
+          <button class="tab active" data-tab="dashboard" role="tab" aria-selected="true">🏠 Dashboard</button>
+          <button class="tab" data-tab="equipe" role="tab" aria-selected="false">👥 Equipe</button>
+          <button class="tab" data-tab="pausas" role="tab" aria-selected="false">☕ Pausas</button>
+          <button class="tab" data-tab="folgas" role="tab" aria-selected="false">🏖️ Folgas</button>
+          <button class="tab" data-tab="avisos" role="tab" aria-selected="false">📢 Novo Aviso</button>
+          <button class="tab" data-tab="aniversarios" role="tab" aria-selected="false">🎂 Aniversários</button>
+        </div>
+
+        <button class="pill" id="btn-sync" type="button">↻ Sincronizar</button>
+      </div>
+    </nav>
+
+    <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+    <main>
+
+      <!-- Dashboard -->
+      <section class="page active" id="page-dashboard" role="tabpanel">
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Hermes Control</p>
+            <h1>Painel de gestão do PIT STOP</h1>
+            <p class="muted">
+              Controle pausas, folgas, aniversários, equipe e dispare avisos individuais via Hermes.
+            </p>
+          </div>
+          <div class="hero-card">
+            <span>Status</span>
+            <strong id="status-conexao">Modo local</strong>
+            <small>Configure Supabase e Hermes para ativar integração total.</small>
+          </div>
+        </div>
+
+        <div class="grid4">
+          <div class="metric"><span>Colaboradores</span><strong id="metric-colabs">0</strong></div>
+          <div class="metric"><span>Técnicos</span><strong id="metric-tecnicos">0</strong></div>
+          <div class="metric"><span>Gestão</span><strong id="metric-gestao">0</strong></div>
+          <div class="metric"><span>Folgas futuras</span><strong id="metric-folgas">0</strong></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h2>☕ Próximas pausas</h2>
+            <div id="dash-pausas" class="list"></div>
+          </div>
+          <div class="card">
+            <h2>🎂 Próximos aniversários</h2>
+            <div id="dash-aniversarios" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Equipe -->
+      <section class="page" id="page-equipe" role="tabpanel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Cadastro</p>
+            <h1>Equipe PIT STOP</h1>
+          </div>
+          <button class="btn btn-gold" id="btn-add-colab" type="button">+ Adicionar</button>
+        </div>
+        <div class="card">
+          <div id="equipe-list" class="team-list"></div>
+        </div>
+      </section>
+
+      <!-- Pausas -->
+      <section class="page" id="page-pausas" role="tabpanel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Operação diária</p>
+            <h1>Controle de pausas</h1>
+            <p class="muted">
+              Campos editáveis. Ao salvar, fica persistido no Supabase;
+              em modo local, fica salvo no navegador.
+            </p>
+          </div>
+          <div class="actions">
+            <button class="btn" id="btn-auto-pausas" type="button">Gerar automático</button>
+            <button class="btn btn-gold" id="btn-save-pausas" type="button">Salvar pausas</button>
+            <button class="btn btn-discord" id="btn-send-pausas" type="button">Enviar no Discord</button>
+          </div>
+        </div>
+        <div class="card table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Colaborador</th>
+                <th scope="col">Entrada</th>
+                <th scope="col">Pausa 10</th>
+                <th scope="col">Pausa 20</th>
+                <th scope="col">Pausa 10</th>
+                <th scope="col">Saída</th>
+              </tr>
+            </thead>
+            <tbody id="pausas-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Folgas -->
+      <section class="page" id="page-folgas" role="tabpanel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Lembretes</p>
+            <h1>Folgas liberadas</h1>
+          </div>
+          <button class="btn btn-gold" id="btn-add-folga" type="button">+ Cadastrar folga</button>
+        </div>
+        <div class="card">
+          <div id="folgas-list" class="list"></div>
+        </div>
+      </section>
+
+      <!-- Avisos -->
+      <section class="page" id="page-avisos" role="tabpanel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Disparo individual</p>
+            <h1>Novo aviso publicado</h1>
+            <p class="muted">
+              Você publica o aviso no Discord e usa esta tela apenas para chamar cada colaborador no privado.
+            </p>
+          </div>
+        </div>
+        <div class="card form-card">
+          <label for="aviso-canal">Canal do aviso</label>
+          <select id="aviso-canal">
+            <option value="Processos">Processos</option>
+            <option value="Avisos">Avisos</option>
+          </select>
+
+          <label for="aviso-titulo">Título ou resumo</label>
+          <input
+            id="aviso-titulo"
+            type="text"
+            placeholder="Ex: Novo procedimento de atendimento"
+          />
+
+          <label for="aviso-msg">Mensagem privada</label>
+          <textarea id="aviso-msg" rows="5">Foi publicado um novo aviso no canal informado. Por favor, leia e marque o visto de lido.</textarea>
+
+          <label>Enviar para</label>
+          <div class="check-grid" role="radiogroup" aria-label="Grupo destinatário">
+            <label>
+              <input type="radio" name="grupo-aviso" value="todos" checked /> Todos
+            </label>
+            <label>
+              <input type="radio" name="grupo-aviso" value="Técnicos" /> Técnicos
+            </label>
+            <label>
+              <input type="radio" name="grupo-aviso" value="Gestão Pit Stop" /> Gestão Pit Stop
+            </label>
+          </div>
+
+          <button class="btn btn-discord" id="btn-send-aviso" type="button">
+            📢 Disparar aviso individual
+          </button>
+        </div>
+      </section>
+
+      <!-- Aniversários -->
+      <section class="page" id="page-aniversarios" role="tabpanel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Datas especiais</p>
+            <h1>Aniversários</h1>
+          </div>
+        </div>
+        <div class="card">
+          <div id="aniversarios-list" class="birthday-grid"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ===== MODAL: COLABORADOR ===== -->
+    <div
+      class="modal-overlay"
+      id="modal-colab"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-colab-title"
+    >
+      <div class="modal">
+        <h2 id="modal-colab-title">Adicionar colaborador</h2>
+
+        <label for="colab-nome">Nome</label>
+        <input id="colab-nome" type="text" autocomplete="name" />
+
+        <label for="colab-cargo">Cargo</label>
+        <select id="colab-cargo">
+          <option>Técnicos</option>
+          <option>Gestão Pit Stop</option>
+        </select>
+
+        <label for="colab-discord">Discord ID</label>
+        <input id="colab-discord" type="text" />
+
+        <div class="grid2-mini">
+          <div>
+            <label for="colab-mes">Mês aniversário</label>
+            <input id="colab-mes" type="number" min="1" max="12" />
+          </div>
+          <div>
+            <label for="colab-dia">Dia aniversário</label>
+            <input id="colab-dia" type="number" min="1" max="31" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn" type="button" data-close="modal-colab">Cancelar</button>
+          <button class="btn btn-gold" type="button" id="btn-save-colab">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: FOLGA ===== -->
+    <div
+      class="modal-overlay"
+      id="modal-folga"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-folga-title"
+    >
+      <div class="modal">
+        <h2 id="modal-folga-title">Cadastrar folga</h2>
+
+        <label for="folga-colaborador">Colaborador</label>
+        <select id="folga-colaborador"></select>
+
+        <label for="folga-data">Data da folga</label>
+        <input id="folga-data" type="date" />
+
+        <label for="folga-motivo">Motivo / observação</label>
+        <input id="folga-motivo" type="text" placeholder="Ex: folga liberada" />
+
+        <div class="modal-actions">
+          <button class="btn" type="button" data-close="modal-folga">Cancelar</button>
+          <button class="btn btn-gold" type="button" id="btn-save-folga">Salvar folga</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="gestao-pitstop.js"></script>
+  </body>
+</html>

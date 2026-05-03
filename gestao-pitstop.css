@@ -1,0 +1,519 @@
+/* ==========================================================================
+   Gestão PIT STOP — Estilos globais
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Variáveis de design (tokens)
+   -------------------------------------------------------------------------- */
+:root {
+  /* Cores de fundo */
+  --bg: #0b0b0f;
+  --surface: #15151c;
+  --surface2: #1d1d27;
+  --surface3: #292938;
+
+  /* Paleta principal */
+  --gold: #f5c842;
+  --blue: #5865f2;
+  --red: #fb7185;
+
+  /* Tipografia */
+  --text: #f4f1ff;
+  --muted: #9794a8;
+
+  /* Borda e forma */
+  --border: rgba(255, 255, 255, 0.09);
+  --radius: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset e box model
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   3. Base — body e tipografia
+   -------------------------------------------------------------------------- */
+body {
+  font-family: "DM Sans", sans-serif;
+  background: radial-gradient(
+    circle at top left,
+    #1f1a0b 0,
+    #0b0b0f 34%,
+    #08080b 100%
+  );
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   4. Navegação
+   -------------------------------------------------------------------------- */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(11, 11, 15, 0.86);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  max-width: 1380px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+}
+
+.brand {
+  font-family: "Syne", sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.brand span {
+  color: var(--gold);
+}
+
+/* Abas de navegação */
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow: auto;
+  flex: 1;
+}
+
+.tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tab.active,
+.tab:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   5. Layout principal
+   -------------------------------------------------------------------------- */
+main {
+  max-width: 1380px;
+  margin: auto;
+  padding: 22px 18px;
+}
+
+/* Páginas / abas de conteúdo */
+.page {
+  display: none;
+}
+
+.page.active {
+  display: block;
+}
+
+/* Hero (topo do dashboard) */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+/* Grids */
+.grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.grid2-mini {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   6. Componentes de card / superfície
+   -------------------------------------------------------------------------- */
+.hero > div:first-child,
+.card,
+.metric,
+.hero-card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+
+/* Hero card lateral */
+.hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hero-card span,
+.metric span {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.hero-card strong,
+.metric strong {
+  font-family: "Syne", sans-serif;
+  font-size: 30px;
+}
+
+/* --------------------------------------------------------------------------
+   7. Tipografia auxiliar
+   -------------------------------------------------------------------------- */
+h1 {
+  font-family: "Syne", sans-serif;
+  font-size: 32px;
+  margin: 4px 0 8px;
+}
+
+h2 {
+  font-family: "Syne", sans-serif;
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.muted {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* --------------------------------------------------------------------------
+   8. Cabeçalho de seção e ações
+   -------------------------------------------------------------------------- */
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   9. Botões e pills
+   -------------------------------------------------------------------------- */
+.btn,
+.pill {
+  height: 40px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn:hover,
+.pill:hover {
+  background: var(--surface3);
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: #111;
+  border-color: var(--gold);
+}
+
+.btn-discord {
+  background: rgba(88, 101, 242, 0.15);
+  border-color: rgba(88, 101, 242, 0.35);
+  color: #9ba3ff;
+}
+
+/* --------------------------------------------------------------------------
+   10. Listas e itens
+   -------------------------------------------------------------------------- */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item,
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.item small,
+.team-row small {
+  color: var(--muted);
+}
+
+/* Avatar circular com iniciais */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  background: rgba(245, 200, 66, 0.15);
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.team-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+/* --------------------------------------------------------------------------
+   11. Tabela de pausas
+   -------------------------------------------------------------------------- */
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+th {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0 8px;
+}
+
+td {
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+}
+
+td:first-child {
+  border-left: 1px solid var(--border);
+  border-radius: 12px 0 0 12px;
+}
+
+td:last-child {
+  border-right: 1px solid var(--border);
+  border-radius: 0 12px 12px 0;
+}
+
+/* --------------------------------------------------------------------------
+   12. Formulários
+   -------------------------------------------------------------------------- */
+input,
+select,
+textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 11px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(245, 200, 66, 0.6);
+}
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+}
+
+.form-card label,
+.modal label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* Radio/checkbox group */
+.check-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.check-grid label {
+  background: var(--surface2);
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   13. Aniversários
+   -------------------------------------------------------------------------- */
+.birthday-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.birthday-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   14. Modais
+   -------------------------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 18px;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   15. Toast de notificação
+   -------------------------------------------------------------------------- */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(14px);
+  opacity: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 18px;
+  border-radius: 999px;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 80;
+  pointer-events: none;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
+/* --------------------------------------------------------------------------
+   16. Responsividade
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .hero,
+  .grid2,
+  .grid4,
+  .birthday-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nav-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tabs {
+    width: 100%;
+  }
+}
