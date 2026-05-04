@@ -667,3 +667,27 @@ textarea:focus {
   100% { opacity: 0; }
 }
 
+/* MÉTRICAS DASHBOARD */
+
+.metric{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.metric span{
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.metric strong{
+  margin-left:auto;
+  font-family:"Syne", sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--gold);
+  line-height:1;
+}
+
