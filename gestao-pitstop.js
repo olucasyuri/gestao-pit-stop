@@ -467,29 +467,117 @@ function renderDash() {
     $("dash-aniversarios").innerHTML = `<div class="empty-state"><div class="empty-icon">🎂</div><strong>Sem aniversários próximos</strong></div>`;
   }
 
-  // Primeiras 5 pausas
-  const comPausa = colaboradores.filter((c) => pausas[c.nome]?.entrada);
-  const exibir = comPausa.length ? comPausa.slice(0, 5) : colaboradores.slice(0, 5);
+  // Próximas pausas com base no horário atual
+  const agora = new Date();
+  const agoraMin = agora.getHours() * 60 + agora.getMinutes();
 
-  $("dash-pausas").innerHTML = exibir.map((c) => {
-    const p = getPausaDefault(c.nome);
-    const temDados = p.entrada || p.saida;
-    return `
-      <div class="item">
-        <div class="team-info">
-          <div class="avatar">${initials(c.nome)}</div>
-          <div>
-            <strong>${c.nome}</strong>
-            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
-              <span class="time-badge ${p.entrada ? "filled" : ""}">${p.entrada || "--:--"}</span>
-              <span style="color:var(--muted);font-size:11px;align-self:center;">→</span>
-              <span class="time-badge ${p.saida ? "filled" : ""}">${p.saida || "--:--"}</span>
+  /**
+   * Converte "HH:MM" para minutos desde meia-noite.
+   * @param {string} hhmm
+   * @returns {number}
+   */
+  function toMin(hhmm) {
+    if (!hhmm) return Infinity;
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  // Para cada colaborador com pausas, determina qual é a próxima pausa
+  const proximasPausas = colaboradores
+    .filter((c) => pausas[c.nome]?.entrada)
+    .map((c) => {
+      const p = getPausaDefault(c.nome);
+      const isGestao = c.cargo === "Gestão Pit Stop";
+
+      // Slots de eventos relevantes (pausa_10_1, pausa_20, pausa_10_2, saida)
+      const slots = isGestao
+        ? [
+            { label: "Almoço", time: p.pausa_20 },
+            { label: "Saída",  time: p.saida },
+          ]
+        : [
+            { label: "Pausa 10", time: p.pausa_10_1 },
+            { label: "Pausa 20", time: p.pausa_20 },
+            { label: "Pausa 10", time: p.pausa_10_2 },
+            { label: "Saída",    time: p.saida },
+          ];
+
+      // Próximo slot ainda não ocorrido
+      const proxSlot = slots.find((s) => s.time && toMin(s.time) > agoraMin);
+
+      return {
+        c, p, isGestao,
+        proxSlot,
+        proxMin: proxSlot ? toMin(proxSlot.time) : Infinity,
+      };
+    })
+    // Apenas quem ainda tem algo acontecendo hoje
+    .filter((item) => item.proxMin !== Infinity)
+    // Ordena pelo próximo evento mais próximo
+    .sort((a, b) => a.proxMin - b.proxMin)
+    .slice(0, 5);
+
+  if (proximasPausas.length) {
+    $("dash-pausas").innerHTML = proximasPausas.map(({ c, p, isGestao, proxSlot }) => {
+      const pausasText = isGestao
+        ? (p.pausa_20 || "--:--")
+        : [p.pausa_10_1, p.pausa_20, p.pausa_10_2].filter(Boolean).join(" · ") || "--:--";
+
+      // Calcula minutos até a próxima pausa
+      const diffMin = toMin(proxSlot.time) - agoraMin;
+      const diffText = diffMin <= 0 ? "Agora"
+        : diffMin < 60 ? `em ${diffMin}min`
+        : `em ${Math.floor(diffMin / 60)}h${diffMin % 60 > 0 ? String(diffMin % 60).padStart(2,"0") : ""}`;
+
+      return `
+        <div class="item">
+          <div class="team-info">
+            <div class="avatar">${initials(c.nome)}</div>
+            <div>
+              <strong>${c.nome}</strong>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                <span class="time-badge filled">${p.entrada || "--:--"}</span>
+                <span style="color:var(--muted);font-size:11px;align-self:center;">→</span>
+                <span class="time-badge filled">${p.saida || "--:--"}</span>
+              </div>
             </div>
           </div>
-        </div>
-        ${temDados ? `<span style="font-size:11px;color:var(--muted);">${p.pausa_10_1||"--:--"} · ${p.pausa_20||"--:--"} · ${p.pausa_10_2||"--:--"}</span>` : '<span style="font-size:11px;color:var(--muted);">sem pausa</span>'}
-      </div>`;
-  }).join("") || `<div class="empty-state"><div class="empty-icon">☕</div><strong>Nenhuma pausa configurada</strong><small>Use "Gerar automático" na aba Pausas.</small></div>`;
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:12px;color:var(--gold);font-weight:600;">${proxSlot.label}: ${proxSlot.time}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${diffText} · ${pausasText}</div>
+          </div>
+        </div>`;
+    }).join("");
+  } else {
+    // Se não há mais pausas no dia, mostra as que foram cadastradas (já realizadas)
+    const comPausa = colaboradores.filter((c) => pausas[c.nome]?.entrada).slice(0, 5);
+    if (comPausa.length) {
+      $("dash-pausas").innerHTML = `
+        <div style="font-size:12px;color:var(--muted);text-align:center;padding:10px 0;margin-bottom:8px;">
+          ✅ Todas as pausas de hoje foram concluídas
+        </div>` +
+        comPausa.map((c) => {
+          const p = getPausaDefault(c.nome);
+          return `
+            <div class="item" style="opacity:0.6;">
+              <div class="team-info">
+                <div class="avatar">${initials(c.nome)}</div>
+                <div>
+                  <strong>${c.nome}</strong>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                    <span class="time-badge filled">${p.entrada || "--:--"}</span>
+                    <span style="color:var(--muted);font-size:11px;align-self:center;">→</span>
+                    <span class="time-badge filled">${p.saida || "--:--"}</span>
+                  </div>
+                </div>
+              </div>
+              <span style="font-size:11px;color:var(--muted);">${[p.pausa_10_1, p.pausa_20, p.pausa_10_2].filter(Boolean).join(" · ") || "--:--"}</span>
+            </div>`;
+        }).join("");
+    } else {
+      $("dash-pausas").innerHTML = `<div class="empty-state"><div class="empty-icon">☕</div><strong>Nenhuma pausa configurada</strong><small>Use "Gerar automático" na aba Pausas.</small></div>`;
+    }
+  }
 }
 
 /* ==========================================================================
@@ -818,6 +906,13 @@ $("btn-send-pausas").onclick = sendPausas;
 
 // Inicia a aplicação
 boot();
+
+// Atualiza o painel a cada 60 segundos para manter as próximas pausas atualizadas
+setInterval(() => {
+  renderMetrics();
+  renderDash();
+}, 60000);
+
 async function atualizarStatusSistema() {
   const titulo = document.getElementById("status-conexao");
   const desc = document.getElementById("status-descricao");
