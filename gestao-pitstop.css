@@ -684,10 +684,11 @@ textarea:focus {
 
 .metric strong{
   margin-left:auto;
-  font-family:"Syne", sans-serif;
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--gold);
-  line-height:1;
+  font-family:"DM Sans", sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -1px;
+  line-height: 1;
 }
 
