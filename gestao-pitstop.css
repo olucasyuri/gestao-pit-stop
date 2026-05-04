@@ -2011,3 +2011,232 @@ input[type="number"] {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ==========================================================================
+   DASHBOARD — Próximas Pausas (redesign)
+   ========================================================================== */
+
+.dash-pausa-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dash-pausa-item:last-child {
+  margin-bottom: 0;
+}
+
+.dash-pausa-item:hover {
+  border-color: rgba(255,255,255,0.14);
+  background: var(--surface3);
+}
+
+.dash-pausa-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Badge "próxima pausa" — canto direito */
+.dash-pausa-next-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.dash-pausa-next-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.dash-pausa-next-time {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dash-pausa-next-diff {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Linha de blocos de pausa */
+.dash-pausa-slots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dash-pausa-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  min-width: 72px;
+  transition: border-color 0.15s;
+}
+
+.dash-pausa-slot--next {
+  background: rgba(245, 200, 66, 0.08);
+  border-color: rgba(245, 200, 66, 0.35);
+}
+
+.dash-pausa-slot-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.dash-pausa-slot--next .dash-pausa-slot-label {
+  color: var(--gold);
+}
+
+.dash-pausa-slot-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-pausa-slot--next .dash-pausa-slot-time {
+  color: var(--gold);
+}
+
+/* ==========================================================================
+   DASHBOARD — Próximos Aniversários (redesign)
+   ========================================================================== */
+
+.dash-bday-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-bday-item:last-child {
+  margin-bottom: 0;
+}
+
+.dash-bday-item:hover {
+  border-color: rgba(255,255,255,0.14);
+  background: var(--surface3);
+}
+
+/* Borda esquerda colorida por urgência */
+.dash-bday-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 14px 0 0 14px;
+  background: var(--border);
+}
+
+.dash-bday-item--hoje {
+  border-color: rgba(245, 200, 66, 0.35);
+  background: rgba(245, 200, 66, 0.04);
+}
+
+.dash-bday-item--hoje::before {
+  background: var(--gold);
+}
+
+.dash-bday-item--breve::before {
+  background: #22c55e;
+}
+
+/* Avatar */
+.dash-bday-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(245, 200, 66, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.dash-bday-avatar--gestao {
+  background: rgba(88, 101, 242, 0.12);
+  color: #9ba3ff;
+  border-color: rgba(88, 101, 242, 0.2);
+}
+
+/* Info (nome + cargo) */
+.dash-bday-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-bday-info strong {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Countdown pill */
+.dash-bday-countdown {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.dash-bday-countdown.hoje {
+  background: rgba(245, 200, 66, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.35);
+}
+
+.dash-bday-countdown.breve {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.dash-bday-countdown.normal {
+  background: var(--surface3);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}

@@ -447,20 +447,27 @@ function renderDash() {
   if (proximosAniversarios.length) {
     $("dash-aniversarios").innerHTML = proximosAniversarios
       .map((c) => {
-        let pillClass, pillText;
-        if (c.dias === 0) { pillClass = "hoje"; pillText = "🎉 Hoje!"; }
-        else if (c.dias <= 7) { pillClass = "breve"; pillText = `Em ${c.dias}d`; }
-        else { pillClass = "normal"; pillText = formatDate(c.prox.toISOString().slice(0, 10)); }
+        const isGestao = c.cargo === "Gestão Pit Stop";
+        const diaStr = String(c.aniversario_dia).padStart(2, "0");
+        const mesStr = String(c.aniversario_mes).padStart(2, "0");
+        const isHoje = c.dias === 0;
+        const isBreve = c.dias > 0 && c.dias <= 7;
+
+        let countdownText, countdownClass;
+        if (isHoje)       { countdownText = "🎉 Hoje!";              countdownClass = "hoje"; }
+        else if (isBreve) { countdownText = `Em ${c.dias}d`;         countdownClass = "breve"; }
+        else              { countdownText = `${diaStr}/${mesStr}`;   countdownClass = "normal"; }
+
         return `
-          <div class="item">
-            <div class="team-info">
-              <div class="avatar">${initials(c.nome)}</div>
-              <div>
-                <strong>${c.nome}</strong>
-                <div style="margin-top:2px"><small style="color:var(--muted);font-size:11px;">${c.cargo === "Gestão Pit Stop" ? "Gestão" : "Técnico"}</small></div>
-              </div>
+          <div class="dash-bday-item ${isHoje ? "dash-bday-item--hoje" : isBreve ? "dash-bday-item--breve" : ""}">
+            <div class="dash-bday-avatar ${isGestao ? "dash-bday-avatar--gestao" : ""}">${initials(c.nome)}</div>
+            <div class="dash-bday-info">
+              <strong>${c.nome}</strong>
+              <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
             </div>
-            <span class="days-pill ${pillClass}">${pillText}</span>
+            <div class="dash-bday-countdown ${countdownClass}">
+              ${countdownText}
+            </div>
           </div>`;
       }).join("");
   } else {
@@ -519,33 +526,52 @@ function renderDash() {
 
   if (proximasPausas.length) {
     $("dash-pausas").innerHTML = proximasPausas.map(({ c, p, isGestao, proxSlot }) => {
-      const pausasText = isGestao
-        ? (p.pausa_20 || "--:--")
-        : [p.pausa_10_1, p.pausa_20, p.pausa_10_2].filter(Boolean).join(" · ") || "--:--";
-
       // Calcula minutos até a próxima pausa
       const diffMin = toMin(proxSlot.time) - agoraMin;
       const diffText = diffMin <= 0 ? "Agora"
         : diffMin < 60 ? `em ${diffMin}min`
         : `em ${Math.floor(diffMin / 60)}h${diffMin % 60 > 0 ? String(diffMin % 60).padStart(2,"0") : ""}`;
 
+      // Monta os blocos de pausa para técnicos
+      const pausaSlots = isGestao
+        ? [
+            { key: "pausa_20", label: "Almoço", icon: "🍽️", time: p.pausa_20, isNext: proxSlot.time === p.pausa_20 },
+            { key: "saida",    label: "Saída",  icon: "🚪", time: p.saida,    isNext: proxSlot.time === p.saida },
+          ]
+        : [
+            { key: "pausa_10_1", label: "1ª Pausa 10", icon: "☕", time: p.pausa_10_1, isNext: proxSlot.time === p.pausa_10_1 },
+            { key: "pausa_20",   label: "Pausa 20",    icon: "🍽️", time: p.pausa_20,   isNext: proxSlot.time === p.pausa_20 },
+            { key: "pausa_10_2", label: "2ª Pausa 10", icon: "☕", time: p.pausa_10_2, isNext: proxSlot.time === p.pausa_10_2 },
+          ];
+
+      const pausaBlocos = pausaSlots.filter(s => s.time).map(s => `
+        <div class="dash-pausa-slot ${s.isNext ? "dash-pausa-slot--next" : ""}">
+          <span class="dash-pausa-slot-label">${s.icon} ${s.label}</span>
+          <span class="dash-pausa-slot-time">${s.time}</span>
+        </div>
+      `).join("");
+
       return `
-        <div class="item">
-          <div class="team-info">
-            <div class="avatar">${initials(c.nome)}</div>
-            <div>
-              <strong>${c.nome}</strong>
-              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
-                <span class="time-badge filled">${p.entrada || "--:--"}</span>
-                <span style="color:var(--muted);font-size:11px;align-self:center;">→</span>
-                <span class="time-badge filled">${p.saida || "--:--"}</span>
+        <div class="dash-pausa-item">
+          <div class="dash-pausa-top">
+            <div class="team-info" style="flex:0 0 auto;gap:8px;">
+              <div class="avatar" style="width:32px;height:32px;font-size:11px;">${initials(c.nome)}</div>
+              <div>
+                <strong style="font-size:13px;">${c.nome}</strong>
+                <div style="display:flex;gap:4px;align-items:center;margin-top:3px;">
+                  <span class="time-badge filled" style="font-size:10px;padding:2px 6px;">${p.entrada || "--:--"}</span>
+                  <span style="color:var(--muted);font-size:10px;">→</span>
+                  <span class="time-badge filled" style="font-size:10px;padding:2px 6px;">${p.saida || "--:--"}</span>
+                </div>
               </div>
             </div>
+            <div class="dash-pausa-next-badge">
+              <span class="dash-pausa-next-label">Próxima</span>
+              <span class="dash-pausa-next-time">${proxSlot.time}</span>
+              <span class="dash-pausa-next-diff">${diffText}</span>
+            </div>
           </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-size:12px;color:var(--gold);font-weight:600;">${proxSlot.label}: ${proxSlot.time}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${diffText} · ${pausasText}</div>
-          </div>
+          <div class="dash-pausa-slots">${pausaBlocos}</div>
         </div>`;
     }).join("");
   } else {
