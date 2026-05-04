@@ -230,15 +230,27 @@ function renderEquipe() {
   const lista = $("equipe-list");
   lista.innerHTML = "";
 
+  if (!colaboradores.length) {
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div><strong>Nenhum colaborador cadastrado</strong><small>Clique em "+ Adicionar" para começar.</small></div>`;
+    $("folga-colaborador").innerHTML = "";
+    return;
+  }
+
   colaboradores.forEach((colab, i) => {
+    const isGestao = colab.cargo === "Gestão Pit Stop";
+    const badgeClass = isGestao ? "gestao" : "tecnico";
+    const badgeLabel = isGestao ? "Gestão" : "Técnico";
     const row = document.createElement("div");
     row.className = "team-row";
     row.innerHTML = `
       <div class="team-info">
         <div class="avatar">${initials(colab.nome)}</div>
         <div>
-          <strong>${colab.nome}</strong><br />
-          <small>${colab.cargo} · Discord ID: ${colab.discord_id || "não informado"}</small>
+          <strong>${colab.nome}</strong>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <span class="cargo-badge ${badgeClass}">${badgeLabel}</span>
+            ${colab.discord_id ? `<small style="color:var(--muted);font-size:11px;">ID ${colab.discord_id}</small>` : '<small style="color:var(--muted);font-size:11px;">sem Discord</small>'}
+          </div>
         </div>
       </div>
       <button class="btn" type="button" onclick="openColab(${i})">Editar</button>
@@ -246,7 +258,6 @@ function renderEquipe() {
     lista.appendChild(row);
   });
 
-  // Popula o select de colaboradores no modal de folga
   $("folga-colaborador").innerHTML = colaboradores
     .map((c) => `<option value="${c.nome}">${c.nome}</option>`)
     .join("");
@@ -266,26 +277,78 @@ function getPausaDefault(nome) {
   };
 }
 
-/** Renderiza a tabela de pausas. */
+/** Renderiza a lista de pausas em cards flex. */
 function renderPausas() {
-  const tbody = $("pausas-body");
-  tbody.innerHTML = "";
+  const container = $("pausas-body");
+  container.innerHTML = "";
 
   colaboradores.forEach((colab) => {
     const p = getPausaDefault(colab.nome);
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>
-        <strong>${colab.nome}</strong><br />
-        <small>${colab.cargo}</small>
-      </td>
-      <td><input type="time" value="${p.entrada || ""}" onchange="setPausa('${colab.nome}', 'entrada', this.value)" /></td>
-      <td><input type="time" value="${p.pausa_10_1 || ""}" onchange="setPausa('${colab.nome}', 'pausa_10_1', this.value)" /></td>
-      <td><input type="time" value="${p.pausa_20 || ""}" onchange="setPausa('${colab.nome}', 'pausa_20', this.value)" /></td>
-      <td><input type="time" value="${p.pausa_10_2 || ""}" onchange="setPausa('${colab.nome}', 'pausa_10_2', this.value)" /></td>
-      <td><input type="time" value="${p.saida || ""}" onchange="setPausa('${colab.nome}', 'saida', this.value)" /></td>
-    `;
-    tbody.appendChild(tr);
+    const isGestao = colab.cargo === "Gestão Pit Stop";
+    const row = document.createElement("div");
+    row.className = "pausa-row";
+
+    const nomeCell = `
+      <div class="pausa-nome">
+        <div class="avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(colab.nome)}</div>
+        <div>
+          <strong>${colab.nome}</strong>
+          <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
+        </div>
+      </div>`;
+
+    if (isGestao) {
+      row.innerHTML = `
+        ${nomeCell}
+        <div class="pausa-fields">
+          <div class="pausa-field">
+            <label>Entrada</label>
+            <input type="time" value="${p.entrada || ""}" onchange="setPausa('${colab.nome}', 'entrada', this.value)" />
+          </div>
+          <div class="pausa-divider">→</div>
+          <div class="pausa-field">
+            <label>Almoço</label>
+            <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa('${colab.nome}', 'pausa_20', this.value)" />
+          </div>
+          <div class="pausa-pill-almoco">1h12</div>
+          <div class="pausa-divider">→</div>
+          <div class="pausa-field">
+            <label>Saída</label>
+            <input type="time" value="${p.saida || ""}" onchange="setPausa('${colab.nome}', 'saida', this.value)" />
+          </div>
+        </div>`;
+    } else {
+      row.innerHTML = `
+        ${nomeCell}
+        <div class="pausa-fields">
+          <div class="pausa-field">
+            <label>Entrada</label>
+            <input type="time" value="${p.entrada || ""}" onchange="setPausa('${colab.nome}', 'entrada', this.value)" />
+          </div>
+          <div class="pausa-divider">·</div>
+          <div class="pausa-field">
+            <label>Pausa 10</label>
+            <input type="time" value="${p.pausa_10_1 || ""}" onchange="setPausa('${colab.nome}', 'pausa_10_1', this.value)" />
+          </div>
+          <div class="pausa-divider">·</div>
+          <div class="pausa-field">
+            <label>Pausa 20</label>
+            <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa('${colab.nome}', 'pausa_20', this.value)" />
+          </div>
+          <div class="pausa-divider">·</div>
+          <div class="pausa-field">
+            <label>Pausa 10</label>
+            <input type="time" value="${p.pausa_10_2 || ""}" onchange="setPausa('${colab.nome}', 'pausa_10_2', this.value)" />
+          </div>
+          <div class="pausa-divider">→</div>
+          <div class="pausa-field">
+            <label>Saída</label>
+            <input type="time" value="${p.saida || ""}" onchange="setPausa('${colab.nome}', 'saida', this.value)" />
+          </div>
+        </div>`;
+    }
+
+    container.appendChild(row);
   });
 }
 
@@ -294,20 +357,29 @@ function renderFolgas() {
   const lista = $("folgas-list");
 
   if (!folgas.length) {
-    lista.innerHTML = '<div class="item">Nenhuma folga cadastrada ainda.</div>';
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">🏖️</div><strong>Nenhuma folga cadastrada</strong><small>Clique em "+ Cadastrar folga" para adicionar.</small></div>`;
     return;
   }
 
+  const hoje = new Date().toISOString().slice(0, 10);
   lista.innerHTML = "";
   folgas.forEach((f) => {
+    const data = f.data_folga ?? f.data;
+    const isFutura = data >= hoje;
     const item = document.createElement("div");
     item.className = "item";
     item.innerHTML = `
-      <div>
-        <strong>${f.colaborador_nome ?? f.colaborador}</strong><br />
-        <small>${formatDate(f.data_folga ?? f.data)} · ${f.motivo ?? ""}</small>
+      <div class="team-info">
+        <div class="avatar">${initials(f.colaborador_nome ?? f.colaborador ?? "?")}</div>
+        <div>
+          <strong>${f.colaborador_nome ?? f.colaborador}</strong>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <small style="color:var(--muted)">${formatDate(data)}</small>
+            ${f.motivo ? `<small style="color:var(--muted)">· ${f.motivo}</small>` : ""}
+          </div>
+        </div>
       </div>
-      <span>🏖️</span>
+      <span class="cargo-badge ${isFutura ? "tecnico" : "gestao"}" style="${isFutura ? "" : "background:rgba(255,255,255,0.05);color:var(--muted);border-color:var(--border);"}">${isFutura ? "Futura" : "Realizada"}</span>
     `;
     lista.appendChild(item);
   });
@@ -315,72 +387,109 @@ function renderFolgas() {
 
 /** Renderiza a grid de aniversários ordenada por data. */
 function renderAniversarios() {
+  const hoje = new Date();
+  const hojeZerado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
   const comAniversario = colaboradores
     .filter((c) => c.aniversario_mes && c.aniversario_dia)
-    .sort(
-      (a, b) =>
-        a.aniversario_mes * 100 + a.aniversario_dia -
-        (b.aniversario_mes * 100 + b.aniversario_dia)
-    );
+    .map((c) => {
+      const prox = proximoAniversario(c.aniversario_mes, c.aniversario_dia);
+      const diffMs = prox - hojeZerado;
+      const dias = Math.round(diffMs / (1000 * 60 * 60 * 24));
+      return { ...c, prox, dias };
+    })
+    .sort((a, b) => a.dias - b.dias);
+
+  if (!comAniversario.length) {
+    $("aniversarios-list").innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🎂</div><strong>Nenhum aniversário cadastrado</strong></div>`;
+    return;
+  }
 
   $("aniversarios-list").innerHTML = comAniversario
-    .map(
-      (c) => `
-        <div class="birthday-card">
-          <strong>
-            ${String(c.aniversario_dia).padStart(2, "0")}/${String(c.aniversario_mes).padStart(2, "0")}
-            — ${c.nome}
-          </strong>
-          <small>${c.cargo}</small>
+    .map((c) => {
+      const diaStr = String(c.aniversario_dia).padStart(2, "0");
+      const mesStr = String(c.aniversario_mes).padStart(2, "0");
+      const isGestao = c.cargo === "Gestão Pit Stop";
+
+      let pillClass, pillText;
+      if (c.dias === 0) { pillClass = "hoje"; pillText = "🎉 Hoje!"; }
+      else if (c.dias <= 7) { pillClass = "breve"; pillText = `Em ${c.dias} dia${c.dias > 1 ? "s" : ""}`; }
+      else { pillClass = "normal"; pillText = `${diaStr}/${mesStr}`; }
+
+      return `
+        <div class="birthday-card ${c.dias <= 7 ? "destaque" : ""}">
+          <div class="bday-avatar">${initials(c.nome)}</div>
+          <strong>${c.nome}</strong>
+          <small class="cargo-badge ${isGestao ? "gestao" : "tecnico"}" style="width:fit-content;">${isGestao ? "Gestão" : "Técnico"}</small>
+          <span class="bday-pill ${pillClass}">${pillText}</span>
         </div>
-      `
-    )
+      `;
+    })
     .join("");
 }
 
 /** Renderiza os painéis de destaque do dashboard. */
 function renderDash() {
+  const hoje = new Date();
+  const hojeZerado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
   // Próximos aniversários
   const proximosAniversarios = colaboradores
     .filter((c) => c.aniversario_mes && c.aniversario_dia)
-    .map((c) => ({ ...c, prox: proximoAniversario(c.aniversario_mes, c.aniversario_dia) }))
-    .sort((a, b) => a.prox - b.prox)
+    .map((c) => {
+      const prox = proximoAniversario(c.aniversario_mes, c.aniversario_dia);
+      const dias = Math.round((prox - hojeZerado) / (1000 * 60 * 60 * 24));
+      return { ...c, prox, dias };
+    })
+    .sort((a, b) => a.dias - b.dias)
     .slice(0, 5);
 
-  $("dash-aniversarios").innerHTML =
-    proximosAniversarios
-      .map(
-        (c) => `
+  if (proximosAniversarios.length) {
+    $("dash-aniversarios").innerHTML = proximosAniversarios
+      .map((c) => {
+        let pillClass, pillText;
+        if (c.dias === 0) { pillClass = "hoje"; pillText = "🎉 Hoje!"; }
+        else if (c.dias <= 7) { pillClass = "breve"; pillText = `Em ${c.dias}d`; }
+        else { pillClass = "normal"; pillText = formatDate(c.prox.toISOString().slice(0, 10)); }
+        return `
           <div class="item">
-            <div>
-              <strong>${c.nome}</strong><br />
-              <small>${formatDate(c.prox.toISOString().slice(0, 10))}</small>
+            <div class="team-info">
+              <div class="avatar">${initials(c.nome)}</div>
+              <div>
+                <strong>${c.nome}</strong>
+                <div style="margin-top:2px"><small style="color:var(--muted);font-size:11px;">${c.cargo === "Gestão Pit Stop" ? "Gestão" : "Técnico"}</small></div>
+              </div>
             </div>
-            <span>🎂</span>
-          </div>
-        `
-      )
-      .join("") || '<div class="item">Nenhum aniversário.</div>';
+            <span class="days-pill ${pillClass}">${pillText}</span>
+          </div>`;
+      }).join("");
+  } else {
+    $("dash-aniversarios").innerHTML = `<div class="empty-state"><div class="empty-icon">🎂</div><strong>Sem aniversários próximos</strong></div>`;
+  }
 
   // Primeiras 5 pausas
-  $("dash-pausas").innerHTML = colaboradores
-    .slice(0, 5)
-    .map((c) => {
-      const p = getPausaDefault(c.nome);
-      return `
-        <div class="item">
+  const comPausa = colaboradores.filter((c) => pausas[c.nome]?.entrada);
+  const exibir = comPausa.length ? comPausa.slice(0, 5) : colaboradores.slice(0, 5);
+
+  $("dash-pausas").innerHTML = exibir.map((c) => {
+    const p = getPausaDefault(c.nome);
+    const temDados = p.entrada || p.saida;
+    return `
+      <div class="item">
+        <div class="team-info">
+          <div class="avatar">${initials(c.nome)}</div>
           <div>
-            <strong>${c.nome}</strong><br />
-            <small>
-              ${p.entrada || "--:--"} → ${p.saida || "--:--"}
-              · ${p.pausa_10_1 || "--:--"}, ${p.pausa_20 || "--:--"}, ${p.pausa_10_2 || "--:--"}
-            </small>
+            <strong>${c.nome}</strong>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+              <span class="time-badge ${p.entrada ? "filled" : ""}">${p.entrada || "--:--"}</span>
+              <span style="color:var(--muted);font-size:11px;align-self:center;">→</span>
+              <span class="time-badge ${p.saida ? "filled" : ""}">${p.saida || "--:--"}</span>
+            </div>
           </div>
-          <span>☕</span>
         </div>
-      `;
-    })
-    .join("");
+        ${temDados ? `<span style="font-size:11px;color:var(--muted);">${p.pausa_10_1||"--:--"} · ${p.pausa_20||"--:--"} · ${p.pausa_10_2||"--:--"}</span>` : '<span style="font-size:11px;color:var(--muted);">sem pausa</span>'}
+      </div>`;
+  }).join("") || `<div class="empty-state"><div class="empty-icon">☕</div><strong>Nenhuma pausa configurada</strong><small>Use "Gerar automático" na aba Pausas.</small></div>`;
 }
 
 /* ==========================================================================
@@ -496,13 +605,27 @@ function autoPausas() {
 
   colaboradores.forEach((colab, i) => {
     const entrada = pausas[colab.nome]?.entrada || entradasBase[i % entradasBase.length];
-    pausas[colab.nome] = {
-      entrada,
-      pausa_10_1: addMinutes(entrada, 120),
-      pausa_20:   addMinutes(entrada, 240),
-      pausa_10_2: addMinutes(entrada, 360),
-      saida:      addMinutes(entrada, 380),
-    };
+    const isGestao = colab.cargo === "Gestão Pit Stop";
+
+    if (isGestao) {
+      // Gestão: apenas pausa de almoço de 1h12 (72 min), sem pausas 10/20/10
+      pausas[colab.nome] = {
+        entrada,
+        pausa_10_1: "",
+        pausa_20:   addMinutes(entrada, 240),  // almoço começa após 4h
+        pausa_10_2: "",
+        saida:      addMinutes(entrada, 240 + 72), // volta após 1h12
+      };
+    } else {
+      // Técnicos: pausas 10 + 20 + 10
+      pausas[colab.nome] = {
+        entrada,
+        pausa_10_1: addMinutes(entrada, 120),
+        pausa_20:   addMinutes(entrada, 240),
+        pausa_10_2: addMinutes(entrada, 360),
+        saida:      addMinutes(entrada, 380),
+      };
+    }
   });
 
   saveLocal();

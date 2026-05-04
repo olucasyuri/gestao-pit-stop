@@ -59,8 +59,9 @@ nav {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(11, 11, 15, 0.86);
-  backdrop-filter: blur(18px);
+  background: rgba(10, 10, 14, 0.92);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -69,44 +70,159 @@ nav {
   margin: auto;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 18px;
+  gap: 16px;
+  padding: 10px 20px;
 }
 
+/* --- Brand --- */
 .brand {
   font-family: "Syne", sans-serif;
   font-weight: 800;
-  font-size: 20px;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.brand-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: var(--gold);
+  color: #111;
+  border-radius: 7px;
+  flex-shrink: 0;
 }
 
 .brand span {
   color: var(--gold);
 }
 
-/* Abas de navegação */
+/* Separador vertical entre brand e tabs */
+.nav-inner::after {
+  display: none;
+}
+
+.nav-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* --- Tabs --- */
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   overflow: auto;
   flex: 1;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
   border: 0;
   background: transparent;
   color: var(--muted);
-  padding: 10px 12px;
-  border-radius: 999px;
+  padding: 8px 13px;
+  border-radius: 10px;
   cursor: pointer;
-  font-weight: 700;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
-.tab.active,
+.tab-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
 .tab:hover {
   background: var(--surface2);
   color: var(--text);
+}
+
+.tab:hover .tab-icon {
+  opacity: 1;
+}
+
+.tab.active {
+  background: var(--surface2);
+  color: var(--text);
+  position: relative;
+}
+
+.tab.active .tab-icon {
+  opacity: 1;
+  stroke: var(--gold);
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 999px;
+}
+
+/* --- Pill / Sincronizar --- */
+.pill {
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0 14px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pill:hover {
+  background: var(--surface3);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.sync-icon {
+  transition: transform 0.4s ease;
+}
+
+.pill:hover .sync-icon {
+  transform: rotate(180deg);
+}
+
+@keyframes syncSpin {
+  to { transform: rotate(360deg); }
+}
+
+.pill.syncing .sync-icon {
+  animation: syncSpin 0.7s linear infinite;
 }
 
 /* --------------------------------------------------------------------------
@@ -241,8 +357,7 @@ h2 {
 /* --------------------------------------------------------------------------
    9. Botões e pills
    -------------------------------------------------------------------------- */
-.btn,
-.pill {
+.btn {
   height: 40px;
   border: 1px solid var(--border);
   background: var(--surface2);
@@ -254,8 +369,7 @@ h2 {
   transition: background 0.15s;
 }
 
-.btn:hover,
-.pill:hover {
+.btn:hover {
   background: var(--surface3);
 }
 
@@ -266,9 +380,49 @@ h2 {
 }
 
 .btn-discord {
-  background: rgba(88, 101, 242, 0.15);
+  background: rgba(88, 101, 242, 0.12);
   border-color: rgba(88, 101, 242, 0.35);
   color: #9ba3ff;
+  gap: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.03em;
+  box-shadow: 0 0 0 0 rgba(88, 101, 242, 0);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, color 0.18s;
+}
+
+.btn-discord:hover {
+  background: rgba(88, 101, 242, 0.22);
+  border-color: rgba(88, 101, 242, 0.6);
+  color: #c5caff;
+  box-shadow: 0 0 18px rgba(88, 101, 242, 0.25);
+}
+
+/* Botão discord grande (disparar aviso) */
+.form-card .btn-discord {
+  height: 50px;
+  border-radius: 14px;
+  font-size: 15px;
+  margin-top: 4px;
+  width: 100%;
+  border-width: 1.5px;
+  background: rgba(88, 101, 242, 0.10);
+  position: relative;
+  overflow: hidden;
+}
+
+.form-card .btn-discord::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(88, 101, 242, 0.12), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+}
+
+.form-card .btn-discord:hover::before {
+  transform: translateX(100%);
 }
 
 /* --------------------------------------------------------------------------
@@ -289,7 +443,14 @@ h2 {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.item:hover,
+.team-row:hover {
+  border-color: rgba(255,255,255,0.15);
+  background: var(--surface3);
 }
 
 .item small,
@@ -319,42 +480,105 @@ h2 {
 }
 
 /* --------------------------------------------------------------------------
-   11. Tabela de pausas
+   11. Cards de pausas (substituiu tabela)
    -------------------------------------------------------------------------- */
-.table-wrap {
+.pausas-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   overflow: auto;
 }
 
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 8px;
-}
-
-th {
-  font-size: 11px;
-  color: var(--muted);
-  text-align: left;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  padding: 0 8px;
-}
-
-td {
+.pausa-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   background: var(--surface2);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  transition: border-color 0.15s;
 }
 
-td:first-child {
-  border-left: 1px solid var(--border);
-  border-radius: 12px 0 0 12px;
+.pausa-row:hover {
+  border-color: rgba(255,255,255,0.14);
 }
 
-td:last-child {
-  border-right: 1px solid var(--border);
-  border-radius: 0 12px 12px 0;
+.pausa-nome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
+.pausa-nome strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 3px;
+}
+
+.pausa-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.pausa-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pausa-field label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.pausa-field input[type="time"] {
+  width: 96px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: "DM Sans", monospace;
+  font-weight: 600;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.pausa-field input[type="time"]:focus {
+  border-color: rgba(245, 200, 66, 0.6);
+  outline: none;
+}
+
+.pausa-divider {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 16px;
+  flex-shrink: 0;
+}
+
+.pausa-pill-almoco {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(245, 200, 66, 0.1);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.25);
+  margin-top: 16px;
+  white-space: nowrap;
+  letter-spacing: 0.06em;
 }
 
 /* --------------------------------------------------------------------------
@@ -379,6 +603,17 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: rgba(245, 200, 66, 0.6);
+}
+
+/* Remove setinhas nativas do input number */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .form-card {
@@ -408,19 +643,168 @@ textarea:focus {
 
 .check-grid label {
   background: var(--surface2);
-  padding: 10px;
+  padding: 10px 18px 10px 14px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  color: var(--text);
+  color: var(--muted);
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  user-select: none;
+  position: relative;
 }
 
-/* --------------------------------------------------------------------------
-   13. Aniversários
-   -------------------------------------------------------------------------- */
+.check-grid label:hover {
+  background: var(--surface3);
+  color: var(--text);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* Esconde o radio nativo */
+.check-grid input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface3);
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.check-grid input[type="radio"]::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.check-grid input[type="radio"]:checked {
+  border-color: var(--gold);
+  background: rgba(245, 200, 66, 0.12);
+}
+
+.check-grid input[type="radio"]:checked::after {
+  background: var(--gold);
+}
+
+/* Label ativa quando radio está marcado */
+.check-grid label:has(input[type="radio"]:checked) {
+  border-color: rgba(245, 200, 66, 0.45);
+  background: rgba(245, 200, 66, 0.07);
+  color: var(--text);
+}
+
+/* Badge de cargo */
+.cargo-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.06em;
+}
+
+.cargo-badge.tecnico {
+  background: rgba(88, 101, 242, 0.12);
+  color: #9ba3ff;
+  border: 1px solid rgba(88, 101, 242, 0.25);
+}
+
+.cargo-badge.gestao {
+  background: rgba(245, 200, 66, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.25);
+}
+
+/* Estado vazio */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-state .empty-icon {
+  font-size: 32px;
+  opacity: 0.5;
+  margin-bottom: 4px;
+}
+
+.empty-state strong {
+  font-size: 15px;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.empty-state small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Badge de horário no dashboard */
+.time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.time-badge.filled {
+  color: var(--gold);
+  background: rgba(245, 200, 66, 0.08);
+  border-color: rgba(245, 200, 66, 0.2);
+}
+
+/* Pill de dias para aniversário no dash */
+.days-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.days-pill.hoje {
+  background: rgba(245, 200, 66, 0.15);
+  color: var(--gold);
+}
+
+.days-pill.breve {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.days-pill.normal {
+  background: var(--surface3);
+  color: var(--muted);
+}
 .birthday-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -431,10 +815,76 @@ textarea:focus {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.birthday-card:hover {
+  border-color: rgba(245, 200, 66, 0.25);
+  background: var(--surface3);
+}
+
+.birthday-card .bday-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(245, 200, 66, 0.12);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.birthday-card strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.birthday-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.birthday-card .bday-pill {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-top: 4px;
+  width: fit-content;
+}
+
+.birthday-card .bday-pill.hoje {
+  background: rgba(245, 200, 66, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.3);
+}
+
+.birthday-card .bday-pill.breve {
+  background: rgba(88, 101, 242, 0.12);
+  color: #9ba3ff;
+  border: 1px solid rgba(88, 101, 242, 0.25);
+}
+
+.birthday-card .bday-pill.normal {
+  background: var(--surface3);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.birthday-card.destaque {
+  border-color: rgba(245, 200, 66, 0.35);
 }
 
 /* --------------------------------------------------------------------------
@@ -669,26 +1119,895 @@ textarea:focus {
 
 /* MÉTRICAS DASHBOARD */
 
-.metric{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+  padding: 22px 24px;
 }
 
-.metric span{
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 600;
+.metric::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
 }
 
-.metric strong{
-  margin-left:auto;
-  font-family:"DM Sans", sans-serif;
-  font-size: 34px;
+.metric.m-blue::before  { background: #5865f2; }
+.metric.m-gold::before  { background: #f5c842; }
+.metric.m-green::before { background: #22c55e; }
+.metric.m-muted::before { background: #9794a8; }
+
+.metric span {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.metric strong {
+  font-family: "Syne", sans-serif;
+  font-size: 36px;
   font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -1px;
+  color: var(--text);
   line-height: 1;
+  margin-top: 4px;
+  letter-spacing: -1px;
 }
 
+
+/* ==========================================================================
+   MODAL FOLGA — Redesign completo
+   ========================================================================== */
+
+.modal-folga-inner {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  max-width: 500px;
+}
+
+/* Header do modal */
+.modal-folga-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.modal-folga-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: rgba(245, 200, 66, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-folga-header h2 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.modal-folga-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.modal-close-btn {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-close-btn:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+/* Body do modal */
+.modal-folga-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-field label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+/* Input com ícone */
+.input-icon-wrap {
+  position: relative;
+}
+
+.input-icon-wrap .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.input-icon-wrap input.has-icon {
+  padding-left: 36px;
+}
+
+/* Actions do modal */
+.modal-folga-inner .modal-actions {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+  margin: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-folga-inner .btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ==========================================================================
+   CUSTOM SELECT — Dropdown de colaboradores
+   ========================================================================== */
+
+.custom-select-wrap {
+  position: relative;
+}
+
+/* Botão trigger */
+.custom-select-trigger {
+  width: 100%;
+  height: 42px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  padding: 0 14px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: border-color 0.15s, color 0.15s;
+  text-align: left;
+}
+
+.custom-select-trigger:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.custom-select-trigger #collab-selected-label.has-value {
+  color: var(--text);
+}
+
+.custom-select-wrap.open .custom-select-trigger {
+  border-color: rgba(245, 200, 66, 0.5);
+  box-shadow: 0 0 0 3px rgba(245, 200, 66, 0.08);
+}
+
+.caret-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.custom-select-wrap.open .caret-icon {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel */
+.custom-select-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.3);
+  z-index: 200;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.custom-select-wrap.open .custom-select-dropdown {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+/* Busca dentro do dropdown */
+.custom-select-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.custom-select-search input {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 0;
+  border-radius: 0;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-select-search input::placeholder {
+  color: var(--muted);
+}
+
+.custom-select-search input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Lista de opções */
+.custom-select-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface3) transparent;
+}
+
+.custom-select-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-select-list::-webkit-scrollbar-thumb {
+  background: var(--surface3);
+  border-radius: 4px;
+}
+
+/* Opção individual */
+.collab-option {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.12s;
+  text-align: left;
+}
+
+.collab-option:hover {
+  background: var(--surface2);
+}
+
+.collab-option.selected {
+  background: rgba(245, 200, 66, 0.1);
+  color: var(--gold);
+}
+
+.collab-option.selected .collab-avatar {
+  background: rgba(245, 200, 66, 0.2);
+  color: var(--gold);
+}
+
+/* Avatar com iniciais */
+.collab-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface3);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Empty state da busca */
+.collab-empty {
+  padding: 14px 12px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ==========================================================================
+   DATE PICKER CUSTOMIZADO
+   ========================================================================== */
+
+.datepicker-wrap {
+  position: relative;
+}
+
+/* Trigger button */
+.datepicker-trigger {
+  width: 100%;
+  height: 42px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  padding: 0 14px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color 0.15s;
+  text-align: left;
+}
+
+.datepicker-trigger:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.datepicker-trigger[aria-expanded="true"] {
+  border-color: rgba(245, 200, 66, 0.5);
+  box-shadow: 0 0 0 3px rgba(245, 200, 66, 0.08);
+}
+
+.datepicker-trigger #datepicker-label.has-value {
+  color: var(--text);
+}
+
+/* Panel */
+.datepicker-panel {
+  position: fixed;
+  width: 300px;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.11);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.4);
+  z-index: 9999;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.datepicker-panel.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+/* Header: navegação de mês/ano */
+.dp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dp-month-year {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dp-month-btn,
+.dp-year-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: "Syne", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 7px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dp-month-btn:hover,
+.dp-year-btn:hover {
+  background: var(--surface2);
+  color: var(--gold);
+}
+
+.dp-nav {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.dp-nav:hover {
+  background: var(--surface3);
+  color: var(--text);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* Cabeçalho de dias da semana */
+.dp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 10px 10px 4px;
+  gap: 2px;
+}
+
+.dp-weekdays span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+/* Grade de dias */
+.dp-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 4px 10px 10px;
+  gap: 3px;
+}
+
+.dp-day {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  border-radius: 9px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+  position: relative;
+}
+
+.dp-day:hover:not(:disabled):not(.dp-day-selected) {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.dp-outside {
+  pointer-events: none;
+}
+
+/* Hoje */
+.dp-day-today:not(.dp-day-selected)::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.dp-day-today:not(.dp-day-selected) {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* Dia selecionado */
+.dp-day-selected {
+  background: var(--gold) !important;
+  color: #111 !important;
+  font-weight: 800;
+}
+
+.dp-day-selected:hover {
+  background: #e8b830 !important;
+}
+
+/* Footer */
+.dp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.dp-footer-btn {
+  background: transparent;
+  border: none;
+  font-family: "DM Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.dp-footer-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.dp-footer-btn.dp-today {
+  color: var(--gold);
+}
+
+.dp-footer-btn.dp-today:hover {
+  background: rgba(245, 200, 66, 0.1);
+  color: var(--gold);
+}
+
+/* Backdrop leve do datepicker */
+.dp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.dp-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ==========================================================================
+   ANIVERSÁRIOS — Redesign completo
+   ========================================================================== */
+
+/* Header da página */
+.bday-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.bday-page-title {
+  flex-shrink: 0;
+}
+
+.bday-page-title h1 {
+  margin-bottom: 0;
+}
+
+/* Navegação por mês */
+.bday-month-nav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  padding-bottom: 2px;
+}
+
+.bday-month-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.bday-month-pill {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: "DM Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.bday-month-pill:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.bday-month-pill.active {
+  background: rgba(245, 200, 66, 0.12);
+  border-color: rgba(245, 200, 66, 0.4);
+  color: var(--gold);
+}
+
+/* Spotlight — próximos 7 dias */
+.bday-spotlight {
+  background: linear-gradient(135deg, rgba(245,200,66,0.07), rgba(245,200,66,0.03));
+  border: 1px solid rgba(245, 200, 66, 0.2);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.spotlight-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  margin-bottom: 14px;
+}
+
+.spotlight-icon {
+  font-size: 14px;
+}
+
+.spotlight-cards {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.spotlight-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  position: relative;
+  min-width: 160px;
+  transition: border-color 0.15s;
+}
+
+.spotlight-item:hover {
+  border-color: rgba(245, 200, 66, 0.25);
+}
+
+.spotlight-hoje {
+  border-color: rgba(245, 200, 66, 0.35);
+  background: rgba(245, 200, 66, 0.06);
+}
+
+.spotlight-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(245, 200, 66, 0.15);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.spotlight-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.spotlight-info strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.spotlight-info span {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.spotlight-confetti {
+  font-size: 18px;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Card wrapper */
+.bday-main-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+/* Grid de cards */
+.birthday-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+/* Card individual — redesign */
+.birthday-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+}
+
+.birthday-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--border);
+  transition: background 0.2s;
+}
+
+.birthday-card.destaque::before {
+  background: linear-gradient(90deg, var(--gold), #e8b830);
+}
+
+.birthday-card:hover {
+  border-color: rgba(255,255,255,0.14);
+  background: var(--surface3);
+  transform: translateY(-2px);
+}
+
+.birthday-card.destaque {
+  border-color: rgba(245, 200, 66, 0.2);
+}
+
+.birthday-card .bday-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: rgba(245, 200, 66, 0.1);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 13px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(245, 200, 66, 0.15);
+}
+
+.birthday-card strong {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.birthday-card small {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.birthday-card .bday-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 9px;
+  border-radius: 999px;
+  margin-top: auto;
+  width: fit-content;
+  letter-spacing: 0.02em;
+}
+
+.birthday-card .bday-pill.hoje {
+  background: rgba(245, 200, 66, 0.18);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.4);
+}
+
+.birthday-card .bday-pill.breve {
+  background: rgba(88, 101, 242, 0.12);
+  color: #9ba3ff;
+  border: 1px solid rgba(88, 101, 242, 0.25);
+}
+
+.birthday-card .bday-pill.normal {
+  background: var(--surface3);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* Avatar cores por cargo */
+.birthday-card .bday-avatar.gestao {
+  background: rgba(88, 101, 242, 0.12);
+  color: #9ba3ff;
+  border-color: rgba(88, 101, 242, 0.2);
+}
+
+@media (max-width: 900px) {
+  .bday-page-header {
+    flex-direction: column;
+  }
+  .bday-month-nav {
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+  .birthday-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
