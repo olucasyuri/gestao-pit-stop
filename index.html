@@ -56,6 +56,13 @@
             Folgas
           </button>
 
+          <button class="tab" data-tab="pendencias" role="tab" aria-selected="false">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 5a3 3 0 0 1 6 0v0H9v0z"/><path d="M9 12h6M9 16h4"/>
+            </svg>
+            Pendências
+          </button>
+
           <button class="tab" data-tab="avisos" role="tab" aria-selected="false">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -91,7 +98,7 @@
           <div class="hero-main">
             <p class="eyebrow">Painel Operacional</p>
             <h1>Gestão PIT STOP</h1>
-            <p class="muted">Controle pausas, folgas, aniversários, equipe e disparo de avisos individuais.</p>
+            <p class="muted">Controle pausas, folgas, férias, pendências, aniversários, equipe e disparo de avisos individuais.</p>
           </div>
 
           <div class="status-card" id="status-card">
@@ -116,7 +123,7 @@
           <div class="metric m-blue"><span>Colaboradores</span><strong id="metric-colabs">0</strong></div>
           <div class="metric m-gold"><span>Técnicos</span><strong id="metric-tecnicos">0</strong></div>
           <div class="metric m-green"><span>Gestão</span><strong id="metric-gestao">0</strong></div>
-          <div class="metric m-muted"><span>Folgas futuras</span><strong id="metric-folgas">0</strong></div>
+          <div class="metric m-muted"><span>Ausências futuras</span><strong id="metric-folgas">0</strong></div>
         </div>
 
         <div class="grid2">
@@ -172,12 +179,57 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Lembretes</p>
-            <h1>Folgas liberadas</h1>
+            <h1>Folgas e férias</h1>
           </div>
-          <button class="btn btn-gold" id="btn-add-folga" type="button">+ Cadastrar folga</button>
+          <div class="actions">
+            <button class="btn" id="btn-add-folga" type="button">+ Cadastrar folga</button>
+            <button class="btn btn-gold" id="btn-add-ferias" type="button">+ Cadastrar férias</button>
+          </div>
         </div>
         <div class="card">
           <div id="folgas-list" class="list"></div>
+        </div>
+      </section>
+
+      <!-- Pendências -->
+      <section class="page" id="page-pendencias" role="tabpanel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Análise</p>
+            <h1>Pendências</h1>
+          </div>
+        </div>
+        <div class="grid2 pendencias-layout">
+          <div class="card form-card pendencia-form">
+            <label for="pendencia-cliente">Cliente</label>
+            <input id="pendencia-cliente" type="text" />
+
+            <label for="pendencia-cnpj">CNPJ</label>
+            <input id="pendencia-cnpj" type="text" />
+
+            <label for="pendencia-registro">Registro</label>
+            <input id="pendencia-registro" type="text" />
+
+            <label for="pendencia-motivo">Motivo da análise</label>
+            <textarea id="pendencia-motivo" rows="4"></textarea>
+
+            <label class="case-toggle" for="pendencia-caso-aberto">
+              <input id="pendencia-caso-aberto" type="checkbox" />
+              Caso em aberto
+            </label>
+
+            <div id="pendencia-numero-caso-wrap">
+              <label for="pendencia-numero-caso">Número do caso</label>
+              <input id="pendencia-numero-caso" type="text" />
+            </div>
+
+            <button class="btn btn-gold" id="btn-save-pendencia" type="button">Adicionar pendência</button>
+          </div>
+
+          <div class="card pendencias-card">
+            <h2>Em análise</h2>
+            <div id="pendencias-list" class="list"></div>
+          </div>
         </div>
       </section>
 
@@ -322,6 +374,14 @@
 
         <div class="modal-folga-body">
           <div class="modal-field">
+            <label for="folga-tipo">Tipo</label>
+            <select id="folga-tipo">
+              <option value="folga">Folga</option>
+              <option value="ferias">Férias</option>
+            </select>
+          </div>
+
+          <div class="modal-field">
             <label for="folga-colaborador-trigger">Colaborador</label>
             <!-- Dropdown customizado -->
             <div class="custom-select-wrap" id="collab-dropdown">
@@ -352,7 +412,7 @@
           </div>
 
           <div class="modal-field">
-            <label>Data da folga</label>
+            <label id="folga-data-label">Data da folga</label>
             <div class="datepicker-wrap" id="datepicker-wrap">
               <button type="button" class="datepicker-trigger" id="datepicker-trigger" aria-haspopup="true" aria-expanded="false">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -363,6 +423,11 @@
               <!-- hidden input mantém compatibilidade com JS existente -->
               <input id="folga-data" type="hidden" />
             </div>
+          </div>
+
+          <div class="modal-field" id="folga-data-fim-field" hidden>
+            <label for="folga-data-fim">Data final</label>
+            <input id="folga-data-fim" type="date" />
           </div>
 
           <div class="modal-field">
@@ -377,7 +442,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
             </svg>
-            Salvar folga
+            <span id="btn-save-folga-label">Salvar folga</span>
           </button>
         </div>
       </div>
@@ -503,11 +568,12 @@
       });
 
       /* Limpar seleção quando modal abre */
-      document.getElementById("btn-add-folga").addEventListener("click", () => {
+      document.querySelectorAll("#btn-add-folga, #btn-add-ferias").forEach(btn => btn.addEventListener("click", () => {
         currentValue = "";
+        hiddenSel.value = "";
         label.textContent = "Selecionar colaborador...";
         label.classList.remove("has-value");
-      });
+      }));
     })();
     </script>
     <!-- Aniversários — enhancements visuais -->
@@ -762,8 +828,8 @@
         if (panel.classList.contains("open")) positionPanel();
       });
 
-      // Limpar quando modal de folga abre
-      document.getElementById("btn-add-folga").addEventListener("click", () => {
+      // Limpar quando modal de folga/férias abre
+      document.querySelectorAll("#btn-add-folga, #btn-add-ferias").forEach(btn => btn.addEventListener("click", () => {
         selected = null;
         hidden.value = "";
         labelEl.textContent = "Selecionar data...";
@@ -771,7 +837,7 @@
         viewYear  = now.getFullYear();
         viewMonth = now.getMonth();
         close();
-      });
+      }));
     })();
     </script>
   </body>

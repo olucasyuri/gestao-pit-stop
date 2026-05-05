@@ -68,6 +68,9 @@ let pausas = {};
 /** @type {Array<{ colaborador_nome: string; data_folga: string; motivo?: string; status?: string }>} */
 let folgas = [];
 
+/** @type {Array<{ id: string; cliente: string; cnpj: string; registro: string; motivo: string; caso_aberto: boolean; numero_caso?: string; criado_em: string }>} */
+let pendencias = [];
+
 /** @type {number | null} Índice do colaborador sendo editado no modal */
 let editingColabIndex = null;
 
@@ -104,6 +107,33 @@ function initials(nome) {
 }
 
 /**
+ * Escapa texto antes de inserir em templates HTML.
+ * @param {unknown} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[char]));
+}
+
+/**
+ * Retorna a data local de hoje em YYYY-MM-DD.
+ * @returns {string}
+ */
+function todayISO() {
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth() + 1).padStart(2, "0");
+  const d = String(hoje.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Formata uma data ISO (YYYY-MM-DD) para o padrão BR (DD/MM/YYYY).
  * @param {string} iso
  * @returns {string}
@@ -112,6 +142,73 @@ function formatDate(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+/**
+ * Extrai tipo e período de uma folga/férias.
+ * @param {object} folga
+ */
+function getFolgaInfo(folga) {
+  const status = String(folga.status ?? "").toLowerCase();
+  const statusFim = status.match(/(?:ferias|férias):(\d{4}-\d{2}-\d{2})/);
+  const tipo = folga.tipo === "ferias" || status.includes("ferias") || status.includes("férias")
+    ? "ferias"
+    : "folga";
+  const dataInicio = folga.data_folga ?? folga.data ?? "";
+  const dataFim = tipo === "ferias"
+    ? (folga.data_fim ?? folga.data_final ?? statusFim?.[1] ?? dataInicio)
+    : "";
+
+  return { tipo, dataInicio, dataFim };
+}
+
+/**
+ * Serializa o tipo no campo status para manter compatibilidade com a tabela atual.
+ * @param {"folga" | "ferias"} tipo
+ * @param {string} dataFim
+ */
+function serializeFolgaStatus(tipo, dataFim = "") {
+  return tipo === "ferias" ? `ferias:${dataFim}` : "folga";
+}
+
+/**
+ * Data usada para decidir se uma ausência já deve ir para o arquivo.
+ * @param {object} folga
+ */
+function getFolgaArchiveDate(folga) {
+  const info = getFolgaInfo(folga);
+  return info.tipo === "ferias" ? (info.dataFim || info.dataInicio) : info.dataInicio;
+}
+
+/**
+ * @param {object} folga
+ * @returns {boolean}
+ */
+function isFolgaAtualOuFutura(folga) {
+  return getFolgaArchiveDate(folga) >= todayISO();
+}
+
+/**
+ * @param {object} a
+ * @param {object} b
+ * @returns {number}
+ */
+function compareFolgas(a, b) {
+  const dataA = getFolgaInfo(a).dataInicio;
+  const dataB = getFolgaInfo(b).dataInicio;
+  return dataA.localeCompare(dataB);
+}
+
+/**
+ * @param {object} folga
+ * @returns {string}
+ */
+function formatFolgaPeriodo(folga) {
+  const info = getFolgaInfo(folga);
+  if (info.tipo !== "ferias" || !info.dataFim || info.dataFim === info.dataInicio) {
+    return formatDate(info.dataInicio);
+  }
+  return `${formatDate(info.dataInicio)} a ${formatDate(info.dataFim)}`;
 }
 
 /**
@@ -156,6 +253,7 @@ function saveLocal() {
   localStorage.setItem("pitstop_colaboradores", JSON.stringify(colaboradores));
   localStorage.setItem("pitstop_pausas", JSON.stringify(pausas));
   localStorage.setItem("pitstop_folgas", JSON.stringify(folgas));
+  localStorage.setItem("pitstop_pendencias", JSON.stringify(pendencias));
 }
 
 /** Carrega o estado do localStorage (usa os defaults se vazio). */
@@ -166,6 +264,7 @@ function loadLocal() {
 
   pausas = JSON.parse(localStorage.getItem("pitstop_pausas")) ?? {};
   folgas = JSON.parse(localStorage.getItem("pitstop_folgas")) ?? [];
+  pendencias = JSON.parse(localStorage.getItem("pitstop_pendencias")) ?? [];
 }
 
 /* ==========================================================================
@@ -211,18 +310,17 @@ function renderAll() {
   renderEquipe();
   renderPausas();
   renderFolgas();
+  renderPendencias();
   renderAniversarios();
   renderDash();
 }
 
 /** Atualiza os cards de métricas no dashboard. */
 function renderMetrics() {
-  const hoje = new Date().toISOString().slice(0, 10);
-
   $("metric-colabs").textContent = colaboradores.length;
   $("metric-tecnicos").textContent = colaboradores.filter((c) => c.cargo === "Técnicos").length;
   $("metric-gestao").textContent = colaboradores.filter((c) => c.cargo === "Gestão Pit Stop").length;
-  $("metric-folgas").textContent = folgas.filter((f) => (f.data_folga ?? f.data) >= hoje).length;
+  $("metric-folgas").textContent = folgas.filter(isFolgaAtualOuFutura).length;
 }
 
 /** Renderiza a lista de membros da equipe. */
@@ -258,9 +356,10 @@ function renderEquipe() {
     lista.appendChild(row);
   });
 
-  $("folga-colaborador").innerHTML = colaboradores
-    .map((c) => `<option value="${c.nome}">${c.nome}</option>`)
-    .join("");
+  $("folga-colaborador").innerHTML = `
+    <option value="">Selecionar colaborador...</option>
+    ${colaboradores.map((c) => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`).join("")}
+  `;
 }
 
 /**
@@ -277,78 +376,133 @@ function getPausaDefault(nome) {
   };
 }
 
-/** Renderiza a lista de pausas em cards flex. */
+/**
+ * Determina o turno com base no horário de entrada.
+ * @param {string} entrada
+ * @returns {"manha" | "tarde"}
+ */
+function getTurnoPausa(entrada) {
+  if (!entrada) return "manha";
+  const [hora] = entrada.split(":").map(Number);
+  return hora >= 12 ? "tarde" : "manha";
+}
+
+/**
+ * Monta o card de pausas de um colaborador.
+ * @param {object} colab
+ * @returns {HTMLElement}
+ */
+function buildPausaRow(colab) {
+  const p = getPausaDefault(colab.nome);
+  const isGestao = colab.cargo === "Gestão Pit Stop";
+  const nomeArg = JSON.stringify(colab.nome);
+  const nomeSeguro = escapeHtml(colab.nome);
+  const row = document.createElement("div");
+  row.className = "pausa-row";
+
+  const nomeCell = `
+    <div class="pausa-nome">
+      <div class="avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(colab.nome)}</div>
+      <div>
+        <strong>${nomeSeguro}</strong>
+        <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
+      </div>
+    </div>`;
+
+  if (isGestao) {
+    row.innerHTML = `
+      ${nomeCell}
+      <div class="pausa-fields">
+        <div class="pausa-field">
+          <label>Entrada</label>
+          <input type="time" value="${p.entrada || ""}" onchange="setPausa(${nomeArg}, 'entrada', this.value)" />
+        </div>
+        <div class="pausa-divider">→</div>
+        <div class="pausa-field">
+          <label>Almoço</label>
+          <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa(${nomeArg}, 'pausa_20', this.value)" />
+        </div>
+        <div class="pausa-pill-almoco">1h12</div>
+        <div class="pausa-divider">→</div>
+        <div class="pausa-field">
+          <label>Saída</label>
+          <input type="time" value="${p.saida || ""}" onchange="setPausa(${nomeArg}, 'saida', this.value)" />
+        </div>
+      </div>`;
+  } else {
+    row.innerHTML = `
+      ${nomeCell}
+      <div class="pausa-fields">
+        <div class="pausa-field">
+          <label>Entrada</label>
+          <input type="time" value="${p.entrada || ""}" onchange="setPausa(${nomeArg}, 'entrada', this.value)" />
+        </div>
+        <div class="pausa-divider">·</div>
+        <div class="pausa-field">
+          <label>Pausa 10</label>
+          <input type="time" value="${p.pausa_10_1 || ""}" onchange="setPausa(${nomeArg}, 'pausa_10_1', this.value)" />
+        </div>
+        <div class="pausa-divider">·</div>
+        <div class="pausa-field">
+          <label>Pausa 20</label>
+          <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa(${nomeArg}, 'pausa_20', this.value)" />
+        </div>
+        <div class="pausa-divider">·</div>
+        <div class="pausa-field">
+          <label>Pausa 10</label>
+          <input type="time" value="${p.pausa_10_2 || ""}" onchange="setPausa(${nomeArg}, 'pausa_10_2', this.value)" />
+        </div>
+        <div class="pausa-divider">→</div>
+        <div class="pausa-field">
+          <label>Saída</label>
+          <input type="time" value="${p.saida || ""}" onchange="setPausa(${nomeArg}, 'saida', this.value)" />
+        </div>
+      </div>`;
+  }
+
+  return row;
+}
+
+/** Renderiza a lista de pausas separada por turno. */
 function renderPausas() {
   const container = $("pausas-body");
   container.innerHTML = "";
 
-  colaboradores.forEach((colab) => {
-    const p = getPausaDefault(colab.nome);
-    const isGestao = colab.cargo === "Gestão Pit Stop";
-    const row = document.createElement("div");
-    row.className = "pausa-row";
+  const grupos = [
+    { id: "manha", label: "Turno da manhã", hint: "Entradas antes de 12:00" },
+    { id: "tarde", label: "Turno da tarde", hint: "Entradas a partir de 12:00" },
+  ];
 
-    const nomeCell = `
-      <div class="pausa-nome">
-        <div class="avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(colab.nome)}</div>
+  grupos.forEach((grupo) => {
+    const colabsTurno = colaboradores
+      .filter((colab) => getTurnoPausa(getPausaDefault(colab.nome).entrada) === grupo.id)
+      .sort((a, b) => {
+        const entradaA = getPausaDefault(a.nome).entrada || "99:99";
+        const entradaB = getPausaDefault(b.nome).entrada || "99:99";
+        return entradaA.localeCompare(entradaB) || a.nome.localeCompare(b.nome);
+      });
+
+    const section = document.createElement("section");
+    section.className = "pausa-turno";
+    section.innerHTML = `
+      <div class="pausa-turno-head">
         <div>
-          <strong>${colab.nome}</strong>
-          <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
+          <strong>${grupo.label}</strong>
+          <small>${grupo.hint}</small>
         </div>
-      </div>`;
+        <span class="pausa-turno-count">${colabsTurno.length}</span>
+      </div>
+      <div class="pausa-turno-list"></div>
+    `;
 
-    if (isGestao) {
-      row.innerHTML = `
-        ${nomeCell}
-        <div class="pausa-fields">
-          <div class="pausa-field">
-            <label>Entrada</label>
-            <input type="time" value="${p.entrada || ""}" onchange="setPausa('${colab.nome}', 'entrada', this.value)" />
-          </div>
-          <div class="pausa-divider">→</div>
-          <div class="pausa-field">
-            <label>Almoço</label>
-            <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa('${colab.nome}', 'pausa_20', this.value)" />
-          </div>
-          <div class="pausa-pill-almoco">1h12</div>
-          <div class="pausa-divider">→</div>
-          <div class="pausa-field">
-            <label>Saída</label>
-            <input type="time" value="${p.saida || ""}" onchange="setPausa('${colab.nome}', 'saida', this.value)" />
-          </div>
-        </div>`;
+    const lista = section.querySelector(".pausa-turno-list");
+    if (colabsTurno.length) {
+      colabsTurno.forEach((colab) => lista.appendChild(buildPausaRow(colab)));
     } else {
-      row.innerHTML = `
-        ${nomeCell}
-        <div class="pausa-fields">
-          <div class="pausa-field">
-            <label>Entrada</label>
-            <input type="time" value="${p.entrada || ""}" onchange="setPausa('${colab.nome}', 'entrada', this.value)" />
-          </div>
-          <div class="pausa-divider">·</div>
-          <div class="pausa-field">
-            <label>Pausa 10</label>
-            <input type="time" value="${p.pausa_10_1 || ""}" onchange="setPausa('${colab.nome}', 'pausa_10_1', this.value)" />
-          </div>
-          <div class="pausa-divider">·</div>
-          <div class="pausa-field">
-            <label>Pausa 20</label>
-            <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa('${colab.nome}', 'pausa_20', this.value)" />
-          </div>
-          <div class="pausa-divider">·</div>
-          <div class="pausa-field">
-            <label>Pausa 10</label>
-            <input type="time" value="${p.pausa_10_2 || ""}" onchange="setPausa('${colab.nome}', 'pausa_10_2', this.value)" />
-          </div>
-          <div class="pausa-divider">→</div>
-          <div class="pausa-field">
-            <label>Saída</label>
-            <input type="time" value="${p.saida || ""}" onchange="setPausa('${colab.nome}', 'saida', this.value)" />
-          </div>
-        </div>`;
+      lista.innerHTML = `<div class="empty-state empty-state-compact"><strong>Nenhum colaborador neste turno</strong></div>`;
     }
 
-    container.appendChild(row);
+    container.appendChild(section);
   });
 }
 
@@ -356,33 +510,134 @@ function renderPausas() {
 function renderFolgas() {
   const lista = $("folgas-list");
 
-  if (!folgas.length) {
-    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">🏖️</div><strong>Nenhuma folga cadastrada</strong><small>Clique em "+ Cadastrar folga" para adicionar.</small></div>`;
+  const ativas = folgas.filter(isFolgaAtualOuFutura).sort(compareFolgas);
+  const folgasAtivas = ativas.filter((f) => getFolgaInfo(f).tipo !== "ferias");
+  const feriasAtivas = ativas.filter((f) => getFolgaInfo(f).tipo === "ferias");
+  const arquivadas = folgas
+    .filter((f) => !isFolgaAtualOuFutura(f))
+    .sort((a, b) => getFolgaArchiveDate(b).localeCompare(getFolgaArchiveDate(a)));
+
+  lista.innerHTML = "";
+  lista.appendChild(buildFolgaCategory(
+    "Folgas futuras",
+    "Folgas de hoje ou próximas",
+    folgasAtivas,
+    "Nenhuma folga futura cadastrada."
+  ));
+  lista.appendChild(buildFolgaCategory(
+    "Férias futuras",
+    "Períodos de férias dos colaboradores",
+    feriasAtivas,
+    "Nenhum período de férias cadastrado."
+  ));
+
+  if (arquivadas.length) {
+    const arquivo = document.createElement("details");
+    arquivo.className = "folga-archive";
+    arquivo.innerHTML = `
+      <summary>
+        <span>Arquivo</span>
+        <strong>${arquivadas.length} ${arquivadas.length === 1 ? "registro" : "registros"}</strong>
+      </summary>
+      <div class="folga-archive-list"></div>
+    `;
+    const arquivoLista = arquivo.querySelector(".folga-archive-list");
+    arquivadas.forEach((f) => arquivoLista.appendChild(buildFolgaItem(f, true)));
+    lista.appendChild(arquivo);
+  }
+}
+
+/**
+ * Cria uma categoria visual para folgas ou férias.
+ * @param {string} titulo
+ * @param {string} subtitulo
+ * @param {object[]} items
+ * @param {string} emptyText
+ * @returns {HTMLElement}
+ */
+function buildFolgaCategory(titulo, subtitulo, items, emptyText) {
+  const section = document.createElement("section");
+  section.className = "folga-category";
+  section.innerHTML = `
+    <div class="folga-category-head">
+      <div>
+        <strong>${titulo}</strong>
+        <small>${subtitulo}</small>
+      </div>
+      <span class="pausa-turno-count">${items.length}</span>
+    </div>
+    <div class="folga-category-list"></div>
+  `;
+
+  const list = section.querySelector(".folga-category-list");
+  if (items.length) {
+    items.forEach((f) => list.appendChild(buildFolgaItem(f, false)));
+  } else {
+    list.innerHTML = `<div class="empty-state empty-state-compact"><strong>${emptyText}</strong></div>`;
+  }
+
+  return section;
+}
+
+/**
+ * Cria o item visual de folga/férias.
+ * @param {object} folga
+ * @param {boolean} arquivada
+ * @returns {HTMLElement}
+ */
+function buildFolgaItem(folga, arquivada) {
+  const info = getFolgaInfo(folga);
+  const nome = folga.colaborador_nome ?? folga.colaborador ?? "?";
+  const isHoje = getFolgaArchiveDate(folga) === todayISO() || info.dataInicio === todayISO();
+  const item = document.createElement("div");
+  item.className = `item folga-item${arquivada ? " folga-item-archived" : ""}`;
+  item.innerHTML = `
+    <div class="team-info">
+      <div class="avatar">${initials(nome)}</div>
+      <div>
+        <strong>${escapeHtml(nome)}</strong>
+        <div class="folga-meta">
+          <small>${formatFolgaPeriodo(folga)}</small>
+          ${folga.motivo ? `<small>· ${escapeHtml(folga.motivo)}</small>` : ""}
+        </div>
+      </div>
+    </div>
+    <div class="folga-badges">
+      <span class="cargo-badge ${info.tipo === "ferias" ? "ferias" : "tecnico"}">${info.tipo === "ferias" ? "Férias" : "Folga"}</span>
+      <span class="cargo-badge ${arquivada ? "arquivada" : isHoje ? "hoje" : "gestao"}">${arquivada ? "Arquivada" : isHoje ? "Hoje" : "Futura"}</span>
+    </div>
+  `;
+  return item;
+}
+
+/** Renderiza as pendências de análise. */
+function renderPendencias() {
+  const lista = $("pendencias-list");
+  if (!lista) return;
+
+  if (!pendencias.length) {
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><strong>Nenhuma pendência cadastrada</strong></div>`;
     return;
   }
 
-  const hoje = new Date().toISOString().slice(0, 10);
-  lista.innerHTML = "";
-  folgas.forEach((f) => {
-    const data = f.data_folga ?? f.data;
-    const isFutura = data >= hoje;
-    const item = document.createElement("div");
-    item.className = "item";
-    item.innerHTML = `
-      <div class="team-info">
-        <div class="avatar">${initials(f.colaborador_nome ?? f.colaborador ?? "?")}</div>
+  lista.innerHTML = pendencias
+    .map((p) => `
+      <div class="item pendencia-item">
         <div>
-          <strong>${f.colaborador_nome ?? f.colaborador}</strong>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-            <small style="color:var(--muted)">${formatDate(data)}</small>
-            ${f.motivo ? `<small style="color:var(--muted)">· ${f.motivo}</small>` : ""}
+          <div class="pendencia-title">
+            <strong>${escapeHtml(p.cliente)}</strong>
+            <span class="cargo-badge ${p.caso_aberto ? "ferias" : "tecnico"}">${p.caso_aberto ? "Caso " + escapeHtml(p.numero_caso || "aberto") : "Sem caso"}</span>
           </div>
+          <div class="pendencia-meta">
+            <span>CNPJ ${escapeHtml(p.cnpj)}</span>
+            <span>Registro ${escapeHtml(p.registro)}</span>
+          </div>
+          <p>${escapeHtml(p.motivo)}</p>
         </div>
+        <button class="btn btn-small" type="button" onclick="removePendencia('${p.id}')">Concluir</button>
       </div>
-      <span class="cargo-badge ${isFutura ? "tecnico" : "gestao"}" style="${isFutura ? "" : "background:rgba(255,255,255,0.05);color:var(--muted);border-color:var(--border);"}">${isFutura ? "Futura" : "Realizada"}</span>
-    `;
-    lista.appendChild(item);
-  });
+    `)
+    .join("");
 }
 
 /** Renderiza a grid de aniversários ordenada por data. */
@@ -711,6 +966,8 @@ window.setPausa = (nome, campo, valor) => {
   if (!pausas[nome]) pausas[nome] = {};
   pausas[nome][campo] = valor;
   saveLocal();
+  if (campo === "entrada") renderPausas();
+  renderDash();
 };
 
 /** Gera pausas automáticas para todos os colaboradores com base em horários rotativos. */
@@ -777,17 +1034,56 @@ async function savePausas() {
    11. Ações de dados — Folgas
    ========================================================================== */
 
-/** Cadastra uma nova folga a partir dos campos do modal. */
+/** Atualiza campos do modal conforme o tipo de ausência. */
+function toggleFolgaTipoFields() {
+  const tipo = $("folga-tipo")?.value ?? "folga";
+  const isFerias = tipo === "ferias";
+  const dataFimField = $("folga-data-fim-field");
+  const dataLabel = $("folga-data-label");
+  const saveLabel = $("btn-save-folga-label");
+
+  if (dataFimField) dataFimField.hidden = !isFerias;
+  if (dataLabel) dataLabel.textContent = isFerias ? "Data de início" : "Data da folga";
+  if (saveLabel) saveLabel.textContent = isFerias ? "Salvar férias" : "Salvar folga";
+  $("modal-folga-title").textContent = isFerias ? "Cadastrar férias" : "Cadastrar folga";
+  if (!isFerias) $("folga-data-fim").value = "";
+}
+
+/**
+ * Abre o modal de folga/férias no modo criação.
+ * @param {"folga" | "ferias"} tipo
+ */
+function newFolga(tipo = "folga") {
+  $("folga-tipo").value = tipo;
+  $("folga-data-fim").value = "";
+  $("folga-motivo").value = "";
+  toggleFolgaTipoFields();
+  openModal("modal-folga");
+}
+
+/** Cadastra uma nova folga/férias a partir dos campos do modal. */
 async function saveFolga() {
+  const tipo = $("folga-tipo").value;
+  const dataFim = tipo === "ferias" ? $("folga-data-fim").value : "";
   const folga = {
     colaborador_nome: $("folga-colaborador").value,
     data_folga:       $("folga-data").value,
     motivo:           $("folga-motivo").value.trim(),
-    status:           "liberada",
+    status:           serializeFolgaStatus(tipo, dataFim),
   };
 
   if (!folga.colaborador_nome || !folga.data_folga) {
     toast("Informe colaborador e data.");
+    return;
+  }
+
+  if (tipo === "ferias" && !dataFim) {
+    toast("Informe a data final das férias.");
+    return;
+  }
+
+  if (dataFim && dataFim < folga.data_folga) {
+    toast("A data final não pode ser antes do início.");
     return;
   }
 
@@ -797,15 +1093,71 @@ async function saveFolga() {
       if (error) throw error;
     }
 
-    folgas.push(folga);
+    folgas.push({
+      ...folga,
+      tipo,
+      data_fim: dataFim,
+    });
     saveLocal();
     closeModal("modal-folga");
     renderAll();
-    toast("Folga cadastrada.");
+    toast(tipo === "ferias" ? "Férias cadastradas." : "Folga cadastrada.");
   } catch (err) {
     toast("Erro: " + err.message);
   }
 }
+
+/** Salva uma nova pendência de análise. */
+function savePendencia() {
+  const casoAberto = $("pendencia-caso-aberto").checked;
+  const pendencia = {
+    id: window.crypto?.randomUUID ? window.crypto.randomUUID() : String(Date.now()),
+    cliente: $("pendencia-cliente").value.trim(),
+    cnpj: $("pendencia-cnpj").value.trim(),
+    registro: $("pendencia-registro").value.trim(),
+    motivo: $("pendencia-motivo").value.trim(),
+    caso_aberto: casoAberto,
+    numero_caso: casoAberto ? $("pendencia-numero-caso").value.trim() : "",
+    criado_em: new Date().toISOString(),
+  };
+
+  if (!pendencia.cliente || !pendencia.cnpj || !pendencia.registro || !pendencia.motivo) {
+    toast("Preencha cliente, CNPJ, registro e motivo.");
+    return;
+  }
+
+  if (casoAberto && !pendencia.numero_caso) {
+    toast("Informe o número do caso.");
+    return;
+  }
+
+  pendencias.unshift(pendencia);
+  saveLocal();
+  ["pendencia-cliente", "pendencia-cnpj", "pendencia-registro", "pendencia-motivo", "pendencia-numero-caso"].forEach(
+    (id) => ($(id).value = "")
+  );
+  $("pendencia-caso-aberto").checked = false;
+  togglePendenciaCaso();
+  renderPendencias();
+  toast("Pendência adicionada.");
+}
+
+/** Mostra ou oculta o campo de número do caso. */
+function togglePendenciaCaso() {
+  const aberto = $("pendencia-caso-aberto")?.checked;
+  const wrap = $("pendencia-numero-caso-wrap");
+  if (!wrap) return;
+  wrap.hidden = !aberto;
+  if (!aberto) $("pendencia-numero-caso").value = "";
+}
+
+/** Remove uma pendência concluída. */
+window.removePendencia = (id) => {
+  pendencias = pendencias.filter((p) => p.id !== id);
+  saveLocal();
+  renderPendencias();
+  toast("Pendência concluída.");
+};
 
 /* ==========================================================================
    12. Integração com Hermes
@@ -923,12 +1275,19 @@ document.querySelectorAll(".modal-overlay").forEach((overlay) => {
 $("btn-sync").onclick      = boot;
 $("btn-add-colab").onclick = newColab;
 $("btn-save-colab").onclick = saveColab;
-$("btn-add-folga").onclick  = () => openModal("modal-folga");
+$("btn-add-folga").onclick  = () => newFolga("folga");
+$("btn-add-ferias").onclick = () => newFolga("ferias");
 $("btn-save-folga").onclick = saveFolga;
+$("folga-tipo").onchange = toggleFolgaTipoFields;
+$("btn-save-pendencia").onclick = savePendencia;
+$("pendencia-caso-aberto").onchange = togglePendenciaCaso;
 $("btn-auto-pausas").onclick = autoPausas;
 $("btn-save-pausas").onclick = savePausas;
 $("btn-send-aviso").onclick  = sendAviso;
 $("btn-send-pausas").onclick = sendPausas;
+
+toggleFolgaTipoFields();
+togglePendenciaCaso();
 
 // Inicia a aplicação
 boot();
