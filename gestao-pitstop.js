@@ -1289,6 +1289,76 @@ Saída: ${pausa.saida || "--:--"}
   `.trim();
 }
 
+function getDestinatariosAviso() {
+  const select =
+    document.getElementById("aviso-destinatarios") ||
+    document.getElementById("aviso-colaboradores") ||
+    document.getElementById("feedback-colaborador");
+
+  if (!select) return colaboradores.filter((c) => c.ativo !== false);
+
+  const values = Array.from(select.selectedOptions || [])
+    .map((opt) => opt.value)
+    .filter(Boolean);
+
+  if (!values.length) return [];
+
+  return colaboradores.filter((c) => values.includes(c.nome));
+}
+
+async function criarFeedbackPrivado() {
+  const colaboradorNome = $("feedback-colaborador")?.value;
+  const titulo = $("feedback-titulo")?.value?.trim();
+  const mensagem = $("feedback-mensagem")?.value?.trim();
+
+  if (!colaboradorNome || !titulo || !mensagem) {
+    toast("Informe colaborador, título e mensagem do feedback.");
+    return;
+  }
+
+  try {
+    let feedbackId = null;
+
+    if (supa) {
+      const { data, error } = await supa
+        .from("feedbacks")
+        .insert({
+          colaborador_nome: colaboradorNome,
+          titulo,
+          mensagem,
+          criado_por: "Gestão PIT STOP",
+          criado_em: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      feedbackId = data?.id ?? null;
+
+      await insertNotificacao({
+        colaborador_nome: colaboradorNome,
+        tipo: "feedback",
+        titulo: `Novo feedback: ${titulo}`,
+        mensagem,
+        referencia_id: feedbackId,
+      });
+    }
+
+    if ($("feedback-titulo")) $("feedback-titulo").value = "";
+    if ($("feedback-mensagem")) $("feedback-mensagem").value = "";
+    if ($("feedback-colaborador")) $("feedback-colaborador").value = "";
+
+    toast("Feedback privado enviado e colaborador notificado.");
+  } catch (err) {
+    console.error("[FEEDBACK] erro:", err);
+    toast("Erro ao enviar feedback: " + err.message);
+  }
+}
+
+window.criarFeedbackPrivado = criarFeedbackPrivado;
+window.getDestinatariosAviso = getDestinatariosAviso;
+
 /* ==========================================================================
    12. Integração com Hermes
    ========================================================================== */
