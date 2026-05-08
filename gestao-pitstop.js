@@ -25,7 +25,7 @@ const SUPABASE_URL = "https://ffzzkjkhwylbskfxwmfc.supabase.co";
 // [FIX 1] A chave ANON deve ser um JWT válido — copie de:
 // Supabase Dashboard → Settings → API → "anon public"
 // Ela SEMPRE começa com "eyJ..."
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmenpramtod3lsYnNrZnh3bWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MjYxMTQsImV4cCI6MjA5MzQwMjExNH0._J7yVV2_0IQbz5quIt-nIrH5-Wej9tVCDIed3DKxBhE"; // ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+const SUPABASE_ANON_KEY = "COLE_SUA_CHAVE_ANON_AQUI"; // ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 /** @type {import("@supabase/supabase-js").SupabaseClient | null} */
 const supa =
@@ -1341,31 +1341,40 @@ Saída: ${pausa.saida || "--:--"}
   `.trim();
 }
 
-// ✅ CORREÇÃO — detecta botões de rádio e filtra por cargo corretamente
+/**
+ * Retorna os colaboradores destinatarios do aviso.
+ * Suporta radio buttons com name="grupo-aviso" (padrao do HTML atual).
+ * Values esperados nos radios:
+ *   "todos"            - todos os colaboradores ativos
+ *   "Tecnicos"         - apenas tecnicos
+ *   "Gestao Pit Stop"  - apenas gestao
+ */
 function getDestinatariosAviso() {
-  // Verifica se a UI usa radio buttons (Todos / Técnicos / Gestão Pit Stop)
+  // Busca radio com qualquer um dos nomes possiveis usados no HTML
   const radioChecked = document.querySelector(
+    'input[name="grupo-aviso"]:checked, ' +
     'input[name="aviso-grupo"]:checked, ' +
     'input[name="aviso-destinatario"]:checked, ' +
     'input[name="aviso-filtro"]:checked'
   );
 
   if (radioChecked) {
-    const val = radioChecked.value.toLowerCase();
-    if (val === "todos" || val === "all") {
+    const val = radioChecked.value; // preserva case original do HTML
+
+    if (val === "todos" || val.toLowerCase() === "all") {
       return colaboradores.filter((c) => c.ativo !== false);
     }
-    if (val === "tecnicos" || val === "técnicos") {
+    if (val === "Técnicos" || val.toLowerCase() === "tecnicos") {
       return colaboradores.filter((c) => c.ativo !== false && c.cargo === "Técnicos");
     }
-    if (val === "gestao" || val === "gestão" || val === "gestão pit stop") {
+    if (val === "Gestão Pit Stop" || val.toLowerCase() === "gestao" || val.toLowerCase() === "gestao pit stop") {
       return colaboradores.filter((c) => c.ativo !== false && c.cargo === "Gestão Pit Stop");
     }
-    // Fallback: tenta filtrar por nome diretamente
-    return colaboradores.filter((c) => c.ativo !== false && c.nome === radioChecked.value);
+    // Fallback: filtra por nome exato
+    return colaboradores.filter((c) => c.ativo !== false && c.nome === val);
   }
 
-  // Fallback para <select> múltiplo (caso exista)
+  // Fallback para select multiplo (caso a UI use outro padrao)
   const select =
     document.getElementById("aviso-destinatarios") ||
     document.getElementById("aviso-colaboradores");
@@ -1399,6 +1408,8 @@ async function criarFeedbackPrivado() {
     let feedbackId = null;
 
     if (supa) {
+      // [FIX 7] Usa apenas colunas existentes. Ajuste "criado_por" se sua
+      // tabela feedbacks nao tiver essa coluna.
       const { data, error } = await supa
         .from("feedbacks")
         .insert({
@@ -1406,7 +1417,6 @@ async function criarFeedbackPrivado() {
           titulo,
           mensagem,
           criado_por: "Gestão PIT STOP",
-          criado_em: new Date().toISOString(),
         })
         .select("id")
         .single();
@@ -1494,16 +1504,19 @@ async function sendAviso() {
     let avisoId = null;
 
     if (supa) {
+      // [FIX 7] Usa apenas colunas que existem na tabela avisos do Supabase.
+      // Se sua tabela usa "created_at" (padrao Supabase), mantenha assim.
+      // Se usa "criado_em", troque created_at por criado_em abaixo.
+      const avisoPayload = {
+        canal,
+        titulo,
+        mensagem,
+        criado_por: "Gestão PIT STOP",
+      };
+
       const { data, error } = await supa
         .from("avisos")
-        .insert({
-          canal,
-          titulo,
-          mensagem,
-          criado_por: "Gestão PIT STOP",
-          criado_em: new Date().toISOString(),
-          lidos_count: 0,
-        })
+        .insert(avisoPayload)
         .select("id")
         .single();
 
