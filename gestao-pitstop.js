@@ -1341,11 +1341,34 @@ Saída: ${pausa.saida || "--:--"}
   `.trim();
 }
 
+// ✅ CORREÇÃO — detecta botões de rádio e filtra por cargo corretamente
 function getDestinatariosAviso() {
+  // Verifica se a UI usa radio buttons (Todos / Técnicos / Gestão Pit Stop)
+  const radioChecked = document.querySelector(
+    'input[name="aviso-grupo"]:checked, ' +
+    'input[name="aviso-destinatario"]:checked, ' +
+    'input[name="aviso-filtro"]:checked'
+  );
+
+  if (radioChecked) {
+    const val = radioChecked.value.toLowerCase();
+    if (val === "todos" || val === "all") {
+      return colaboradores.filter((c) => c.ativo !== false);
+    }
+    if (val === "tecnicos" || val === "técnicos") {
+      return colaboradores.filter((c) => c.ativo !== false && c.cargo === "Técnicos");
+    }
+    if (val === "gestao" || val === "gestão" || val === "gestão pit stop") {
+      return colaboradores.filter((c) => c.ativo !== false && c.cargo === "Gestão Pit Stop");
+    }
+    // Fallback: tenta filtrar por nome diretamente
+    return colaboradores.filter((c) => c.ativo !== false && c.nome === radioChecked.value);
+  }
+
+  // Fallback para <select> múltiplo (caso exista)
   const select =
     document.getElementById("aviso-destinatarios") ||
-    document.getElementById("aviso-colaboradores") ||
-    document.getElementById("feedback-colaborador");
+    document.getElementById("aviso-colaboradores");
 
   if (!select) return colaboradores.filter((c) => c.ativo !== false);
 
@@ -1353,7 +1376,7 @@ function getDestinatariosAviso() {
     .map((opt) => opt.value)
     .filter(Boolean);
 
-  if (!values.length) return [];
+  if (!values.length) return colaboradores.filter((c) => c.ativo !== false);
 
   return colaboradores.filter((c) => values.includes(c.nome));
 }
