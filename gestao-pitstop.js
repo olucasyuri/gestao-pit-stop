@@ -25,7 +25,7 @@ const SUPABASE_URL = "https://ffzzkjkhwylbskfxwmfc.supabase.co";
 // [FIX 1] A chave ANON deve ser um JWT válido — copie de:
 // Supabase Dashboard → Settings → API → "anon public"
 // Ela SEMPRE começa com "eyJ..."
-const SUPABASE_ANON_KEY = "COLE_SUA_CHAVE_ANON_AQUI"; // ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmenpramtod3lsYnNrZnh3bWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MjYxMTQsImV4cCI6MjA5MzQwMjExNH0._J7yVV2_0IQbz5quIt-nIrH5-Wej9tVCDIed3DKxBhE"; // ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 /** @type {import("@supabase/supabase-js").SupabaseClient | null} */
 const supa =
