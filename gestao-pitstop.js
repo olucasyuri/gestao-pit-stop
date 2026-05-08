@@ -70,6 +70,7 @@ let folgas = [];
 
 /** @type {Array<{ id: string; cliente: string; cnpj: string; registro: string; motivo: string; caso_aberto: boolean; numero_caso?: string; criado_em: string }>} */
 let pendencias = [];
+let feedbacks = [];
 
 /** @type {number | null} Índice do colaborador sendo editado no modal */
 let editingColabIndex = null;
@@ -308,6 +309,7 @@ async function loadSupabase() {
 function renderAll() {
   renderMetrics();
   renderEquipe();
+  popularSelectFeedback();
   renderPausas();
   renderFolgas();
   renderPendencias();
@@ -1007,25 +1009,45 @@ function autoPausas() {
 /** Salva as pausas no Supabase (se configurado) e no localStorage. */
 async function savePausas() {
   try {
+    const rows = Object.entries(pausas).map(([nome, p]) => ({
+      colaborador_nome: nome,
+      entrada:    p.entrada    ?? "",
+      pausa_10_1: p.pausa_10_1 ?? "",
+      pausa_20:   p.pausa_20   ?? "",
+      pausa_10_2: p.pausa_10_2 ?? "",
+      saida:      p.saida      ?? "",
+    }));
+
     if (supa) {
-      const rows = Object.entries(pausas).map(([nome, p]) => ({
-        colaborador_nome: nome,
-        entrada:    p.entrada    ?? "",
-        pausa_10_1: p.pausa_10_1 ?? "",
-        pausa_20:   p.pausa_20   ?? "",
-        pausa_10_2: p.pausa_10_2 ?? "",
-        saida:      p.saida      ?? "",
-      }));
+      const { data: atuais, error: errAtuais } = await supa.from("pausas").select("*");
+      if (errAtuais) throw errAtuais;
+
+      const antes = {};
+      (atuais ?? []).forEach((row) => { antes[row.colaborador_nome] = row; });
 
       const { error } = await supa
         .from("pausas")
         .upsert(rows, { onConflict: "colaborador_nome" });
       if (error) throw error;
+
+      const campos = ["entrada", "pausa_10_1", "pausa_20", "pausa_10_2", "saida"];
+      const alteradas = rows.filter((row) => {
+        const antiga = antes[row.colaborador_nome] ?? {};
+        return campos.some((campo) => String(row[campo] ?? "") !== String(antiga[campo] ?? ""));
+      });
+
+      await insertNotificacoesBulk(alteradas.map((row) => ({
+        colaborador_nome: row.colaborador_nome,
+        tipo: "pausa",
+        titulo: "Sua pausa foi atualizada",
+        mensagem: pausaResumo(row) || "Confira sua nova jornada no portal.",
+      })));
     }
 
     saveLocal();
-    toast("Pausas salvas.");
+    toast("Pausas salvas e colaboradores alterados notificados.");
   } catch (err) {
+    console.error(err);
     toast("Erro: " + err.message);
   }
 }
@@ -1088,21 +1110,39 @@ async function saveFolga() {
   }
 
   try {
+    let folgaId = null;
+
     if (supa) {
-      const { error } = await supa.from("folgas").insert(folga);
+      const { data, error } = await supa.from("folgas").insert(folga).select("id").single();
       if (error) throw error;
+      folgaId = data?.id ?? null;
+
+      const periodo = tipo === "ferias"
+        ? `${formatDate(folga.data_folga)} a ${formatDate(dataFim)}`
+        : formatDate(folga.data_folga);
+
+      await insertNotificacao({
+        colaborador_nome: folga.colaborador_nome,
+        tipo,
+        titulo: tipo === "ferias" ? "Férias cadastradas" : "Folga cadastrada",
+        mensagem: `${tipo === "ferias" ? "Período de férias" : "Data da folga"}: ${periodo}. ${folga.motivo ? "Motivo: " + folga.motivo : ""}`,
+        referencia_id: folgaId,
+      });
     }
 
     folgas.push({
       ...folga,
+      id: folgaId,
       tipo,
       data_fim: dataFim,
     });
+
     saveLocal();
     closeModal("modal-folga");
     renderAll();
-    toast(tipo === "ferias" ? "Férias cadastradas." : "Folga cadastrada.");
+    toast(tipo === "ferias" ? "Férias cadastradas e colaborador notificado." : "Folga cadastrada e colaborador notificado.");
   } catch (err) {
+    console.error(err);
     toast("Erro: " + err.message);
   }
 }
@@ -1187,30 +1227,66 @@ async function sendHermes(tipo, payload) {
 
 /** Dispara aviso privado no Discord para os destinatários selecionados. */
 async function sendAviso() {
-  const grupoSelecionado =
-    document.querySelector("input[name='grupo-aviso']:checked")?.value ?? "todos";
-
-  const destinatarios = colaboradores
-    .filter((c) => c.ativo !== false)
-    .filter((c) => grupoSelecionado === "todos" || c.cargo === grupoSelecionado)
-    .filter((c) => c.discord_id)
-    .map((c) => ({ nome: c.nome, discordId: c.discord_id }));
+  const destinatarios = getDestinatariosAviso();
 
   if (!destinatarios.length) {
     toast("Nenhum destinatário.");
     return;
   }
 
+  const canal = $("aviso-canal").value;
+  const titulo = $("aviso-titulo").value.trim();
+  const mensagem = $("aviso-msg").value.trim();
+
+  if (!titulo || !mensagem) {
+    toast("Informe título e mensagem.");
+    return;
+  }
+
   try {
-    await sendHermes("novo-aviso", {
-      canal:         $("aviso-canal").value,
-      titulo:        $("aviso-titulo").value.trim(),
-      mensagem:      $("aviso-msg").value.trim(),
-      destinatarios,
-    });
-    toast(`Aviso enviado para ${destinatarios.length} colaborador(es).`);
+    let avisoId = null;
+
+    if (supa) {
+      const { data, error } = await supa
+        .from("avisos")
+        .insert({
+          canal,
+          titulo,
+          mensagem,
+          criado_por: "Gestão PIT STOP",
+          criado_em: new Date().toISOString(),
+          lidos_count: 0,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+      avisoId = data?.id ?? null;
+
+      await insertNotificacoesBulk(destinatarios.map((dest) => ({
+        colaborador_nome: dest.nome,
+        tipo: "aviso",
+        titulo: `Novo aviso: ${titulo}`,
+        mensagem,
+        referencia_id: avisoId,
+      })));
+    }
+
+    try {
+      await sendHermes("novo-aviso", {
+        canal,
+        titulo,
+        mensagem,
+        destinatarios,
+      });
+    } catch (err) {
+      console.warn("[Hermes] aviso salvo no portal, mas Discord falhou:", err);
+    }
+
+    toast(`Aviso publicado no portal e notificação enviada para ${destinatarios.length} colaborador(es).`);
   } catch (err) {
-    toast("Erro: " + err.message);
+    console.error(err);
+    toast("Erro: " + (err.message ?? err));
   }
 }
 
@@ -1284,6 +1360,7 @@ $("pendencia-caso-aberto").onchange = togglePendenciaCaso;
 $("btn-auto-pausas").onclick = autoPausas;
 $("btn-save-pausas").onclick = savePausas;
 $("btn-send-aviso").onclick  = sendAviso;
+if ($("btn-send-feedback")) $("btn-send-feedback").onclick = criarFeedbackPrivado;
 $("btn-send-pausas").onclick = sendPausas;
 
 toggleFolgaTipoFields();

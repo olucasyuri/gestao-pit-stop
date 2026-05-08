@@ -2491,3 +2491,5 @@ input[type="number"] {
   color: var(--muted);
   border: 1px solid var(--border);
 }
+
+.form-card h2{margin-bottom:8px}.form-card + .form-card{margin-top:16px}
