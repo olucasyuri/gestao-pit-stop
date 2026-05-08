@@ -1202,6 +1202,94 @@ window.removePendencia = (id) => {
 };
 
 /* ==========================================================================
+   NOTIFICAÇÕES REALTIME
+   ========================================================================== */
+
+async function insertNotificacao(data) {
+  if (!supa) {
+    console.warn("[NOTIF] Supabase indisponível");
+    return null;
+  }
+
+  try {
+    const payload = {
+      colaborador_nome: data.colaborador_nome,
+      tipo: data.tipo || "geral",
+      titulo: data.titulo || "Nova notificação",
+      mensagem: data.mensagem || "",
+      referencia_id: data.referencia_id || null,
+      lida: false,
+      criado_em: new Date().toISOString(),
+    };
+
+    console.log("[NOTIF] Inserindo:", payload);
+
+    const { data: inserted, error } = await supa
+      .from("notificacoes")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[NOTIF] Erro:", error);
+      throw error;
+    }
+
+    console.log("[NOTIF] Inserida com sucesso");
+
+    return inserted;
+
+  } catch (err) {
+    console.error("[NOTIF] Falha:", err);
+    return null;
+  }
+}
+
+async function insertNotificacoesBulk(lista = []) {
+  if (!supa || !Array.isArray(lista) || !lista.length) {
+    return;
+  }
+
+  try {
+    const payload = lista.map((item) => ({
+      colaborador_nome: item.colaborador_nome,
+      tipo: item.tipo || "geral",
+      titulo: item.titulo || "Nova notificação",
+      mensagem: item.mensagem || "",
+      referencia_id: item.referencia_id || null,
+      lida: false,
+      criado_em: new Date().toISOString(),
+    }));
+
+    console.log("[NOTIF BULK]", payload);
+
+    const { error } = await supa
+      .from("notificacoes")
+      .insert(payload);
+
+    if (error) {
+      console.error("[NOTIF BULK] erro:", error);
+      throw error;
+    }
+
+    console.log("[NOTIF BULK] sucesso");
+
+  } catch (err) {
+    console.error("[NOTIF BULK] falha:", err);
+  }
+}
+
+function pausaResumo(pausa) {
+  return `
+Entrada: ${pausa.entrada || "--:--"}
+Pausa 10 #1: ${pausa.pausa_10_1 || "--:--"}
+Pausa 20: ${pausa.pausa_20 || "--:--"}
+Pausa 10 #2: ${pausa.pausa_10_2 || "--:--"}
+Saída: ${pausa.saida || "--:--"}
+  `.trim();
+}
+
+/* ==========================================================================
    12. Integração com Hermes
    ========================================================================== */
 
