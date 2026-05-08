@@ -309,12 +309,14 @@ async function loadSupabase() {
 function renderAll() {
   renderMetrics();
   renderEquipe();
-  popularSelectFeedback();
   renderPausas();
   renderFolgas();
   renderPendencias();
   renderAniversarios();
   renderDash();
+
+  // IMPORTANTE
+  popularSelectFeedback();
 }
 
 /** Atualiza os cards de métricas no dashboard. */
@@ -1308,12 +1310,31 @@ async function sendPausas() {
 async function boot() {
   try {
     loadLocal();
-    if (supa) await loadSupabase();
+
+    if (supa) {
+      await loadSupabase();
+    }
+
     saveLocal();
+
     renderAll();
+
+    setTimeout(() => {
+      popularSelectFeedback();
+    }, 300);
+
   } catch (err) {
+
+    console.error(err);
+
     loadLocal();
+
     renderAll();
+
+    setTimeout(() => {
+      popularSelectFeedback();
+    }, 300);
+
     toast("Modo local: " + err.message);
   }
 }
@@ -1442,3 +1463,51 @@ async function atualizarStatusSistema() {
 }
 atualizarStatusSistema();
 setInterval(atualizarStatusSistema, 60000);
+function popularSelectFeedback() {
+  const select =
+    document.getElementById("feedback-colaborador") ||
+    document.getElementById("feedback-destinatario") ||
+    document.getElementById("select-feedback-colab");
+
+  if (!select) {
+    console.warn("[Feedback] select não encontrado");
+    return;
+  }
+
+  const ativos = colaboradores
+    .filter((c) => c && c.nome && c.ativo !== false)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  if (!ativos.length) {
+    select.innerHTML = `
+      <option value="">
+        Nenhum colaborador encontrado
+      </option>
+    `;
+    return;
+  }
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o colaborador
+    </option>
+  `;
+
+  ativos.forEach((c) => {
+    const option = document.createElement("option");
+
+    option.value = c.nome;
+
+    option.textContent =
+      `${c.nome} — ${c.cargo || "Sem cargo"}`;
+
+    select.appendChild(option);
+  });
+
+  console.log(
+    "[Feedback] colaboradores carregados:",
+    ativos.length
+  );
+}
+
+window.popularSelectFeedback = popularSelectFeedback;
