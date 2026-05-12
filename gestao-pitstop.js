@@ -86,6 +86,50 @@ let feedbacks = [];
 /** @type {number | null} Índice do colaborador sendo editado no modal */
 let editingColabIndex = null;
 
+/**
+ * Flags de status por colaborador.
+ * Exemplo: { "Diniz": { off: false, ferias: false, atestado: false, saida_ant: false, atraso: false, atraso_min: 0, rodizio: false, chat: false } }
+ * @type {Record<string, object>}
+ */
+let flags = {};
+
+/**
+ * Escala de sábado — lista de entradas temporárias.
+ * @type {Array<{ nome: string; entrada: string; pausa_10_1: string; pausa_20: string; pausa_10_2: string; saida: string }>}
+ */
+let escala_sabado = [];
+
+/** 
+ * Estado de atestados por colaborador: { nome: { dias: number, dataInicio: string } }
+ * @type {Record<string, {dias: number, dataInicio: string}>}
+ */
+let atestados = {};
+
+/**
+ * Horários de chegada real (para atraso): { nome: string horario "HH:MM" }
+ * @type {Record<string, string>}
+ */
+let horariosChegada = {};
+
+/**
+ * Estado de ordenação das pausas.
+ * @type {{ campo: "status" | "horario" | "nome", direcao: "asc" | "desc" }}
+ */
+let pausasOrdenacao = { campo: "horario", direcao: "asc" };
+
+/**
+ * Se true, oculta colaboradores ausentes (OFF/férias/atestado) da lista de pausas.
+ * @type {boolean}
+ */
+let pausasOcultarAusentes = false;
+
+/**
+ * Filtro de colaborador específico na tela de pausas (nome ou "").
+ * @type {string}
+ */
+let pausasFiltroColab = "";
+
+
 /* ==========================================================================
    4. Utilitários
    ========================================================================== */
@@ -196,6 +240,23 @@ function getFolgaArchiveDate(folga) {
  * @param {object} folga
  * @returns {boolean}
  */
+
+/**
+ * Verifica se um colaborador está em atestado válido hoje.
+ * @param {string} nome
+ * @returns {boolean}
+ */
+function isAtestadoAtivo(nome) {
+  const at = atestados[nome];
+  if (!at) return false;
+  const hoje = todayISO();
+  const dataInicio = new Date(at.dataInicio + 'T12:00:00');
+  const dataFim = new Date(dataInicio);
+  dataFim.setDate(dataFim.getDate() + at.dias);
+  const dataFimISO = dataFim.toISOString().split('T')[0];
+  return hoje <= dataFimISO;
+}
+
 function isFolgaAtualOuFutura(folga) {
   return getFolgaArchiveDate(folga) >= todayISO();
 }
@@ -266,6 +327,10 @@ function saveLocal() {
   localStorage.setItem("pitstop_pausas", JSON.stringify(pausas));
   localStorage.setItem("pitstop_folgas", JSON.stringify(folgas));
   localStorage.setItem("pitstop_pendencias", JSON.stringify(pendencias));
+  localStorage.setItem("pitstop_flags", JSON.stringify(flags));
+  localStorage.setItem("pitstop_escala_sabado", JSON.stringify(escala_sabado));
+  localStorage.setItem("pitstop_atestados", JSON.stringify(atestados));
+  localStorage.setItem("pitstop_horariosChegada", JSON.stringify(horariosChegada));
 }
 
 /** Carrega o estado do localStorage (usa os defaults se vazio). */
@@ -277,6 +342,10 @@ function loadLocal() {
   pausas = JSON.parse(localStorage.getItem("pitstop_pausas")) ?? {};
   folgas = JSON.parse(localStorage.getItem("pitstop_folgas")) ?? [];
   pendencias = JSON.parse(localStorage.getItem("pitstop_pendencias")) ?? [];
+  flags = JSON.parse(localStorage.getItem("pitstop_flags")) ?? {};
+  escala_sabado = JSON.parse(localStorage.getItem("pitstop_escala_sabado")) ?? [];
+  atestados = JSON.parse(localStorage.getItem("pitstop_atestados")) ?? {};
+  horariosChegada = JSON.parse(localStorage.getItem("pitstop_horariosChegada")) ?? {};
 }
 
 /* ==========================================================================
@@ -285,18 +354,20 @@ function loadLocal() {
 
 /**
  * Carrega os dados do Supabase e atualiza o estado global.
- * [FIX 4] Tratamento de erro individual por query + fallback para localStorage em folgas.
+ * Inclui: colaboradores, pausas, folgas, flags, atestados, escala_sabado, horariosChegada.
  * @returns {Promise<boolean>} true se carregado com sucesso.
  */
 async function loadSupabase() {
   if (!supa) return false;
 
-  // Executa as queries em paralelo
-  const [resColabs, resPausas, resFolgas] = await Promise.all([
+  // Executa todas as queries em paralelo
+  const [resColabs, resPausas, resFolgas, resFlags, resAtestados, resSabado] = await Promise.all([
     supa.from("colaboradores").select("*").order("nome"),
     supa.from("pausas").select("*"),
-    // [FIX 4] Tenta ordenar por data_folga; se a coluna não existir, o erro é tratado abaixo
     supa.from("folgas").select("*").order("data_folga", { ascending: true }),
+    supa.from("pitstop_flags").select("*"),
+    supa.from("pitstop_atestados").select("*"),
+    supa.from("pitstop_escala_sabado").select("*").order("nome"),
   ]);
 
   // Colaboradores — erro crítico, propaga para o boot()
@@ -306,7 +377,7 @@ async function loadSupabase() {
     ? resColabs.data
     : COLABORADORES_DEFAULT.map((c) => ({ ...c }));
 
-  // Pausas — erro não-crítico, mantém estado local
+  // Pausas — erro não-crítico
   if (resPausas.error) {
     console.warn("[Supabase] Erro ao carregar pausas:", resPausas.error);
   } else {
@@ -316,15 +387,153 @@ async function loadSupabase() {
     });
   }
 
-  // [FIX 4] Folgas — erro não-crítico, faz fallback para localStorage
+  // Folgas — erro não-crítico, fallback para localStorage
   if (resFolgas.error) {
-    console.warn("[Supabase] Erro ao carregar folgas (column order?):", resFolgas.error);
+    console.warn("[Supabase] Erro ao carregar folgas:", resFolgas.error);
     folgas = JSON.parse(localStorage.getItem("pitstop_folgas")) ?? [];
   } else {
     folgas = resFolgas.data ?? [];
   }
 
+  // Flags (OFF, férias, atestado, atraso, etc.) — erro não-crítico
+  if (resFlags.error) {
+    console.warn("[Supabase] Tabela pitstop_flags não encontrada — usando localStorage. Execute o SQL de criação.", resFlags.error);
+    flags = JSON.parse(localStorage.getItem("pitstop_flags")) ?? {};
+  } else {
+    flags = {};
+    (resFlags.data ?? []).forEach((row) => {
+      flags[row.colaborador_nome] = {
+        ferias:    !!row.ferias,
+        atestado:  !!row.atestado,
+        off:       !!row.off,
+        saida_ant: !!row.saida_ant,
+        atraso:    !!row.atraso,
+        atraso_min: row.atraso_min ?? 60,
+        rodizio:   !!row.rodizio,
+        chat:      !!row.chat,
+      };
+    });
+  }
+
+  // Atestados — erro não-crítico
+  if (resAtestados.error) {
+    console.warn("[Supabase] Tabela pitstop_atestados não encontrada — usando localStorage. Execute o SQL de criação.", resAtestados.error);
+    atestados = JSON.parse(localStorage.getItem("pitstop_atestados")) ?? {};
+  } else {
+    atestados = {};
+    (resAtestados.data ?? []).forEach((row) => {
+      atestados[row.colaborador_nome] = { dias: row.dias, dataInicio: row.data_inicio };
+    });
+    horariosChegada = {};
+    (resAtestados.data ?? []).forEach((row) => {
+      if (row.horario_chegada) horariosChegada[row.colaborador_nome] = row.horario_chegada;
+    });
+  }
+
+  // Escala de sábado — erro não-crítico
+  if (resSabado.error) {
+    console.warn("[Supabase] Tabela pitstop_escala_sabado não encontrada — usando localStorage. Execute o SQL de criação.", resSabado.error);
+    escala_sabado = JSON.parse(localStorage.getItem("pitstop_escala_sabado")) ?? [];
+  } else {
+    escala_sabado = (resSabado.data ?? []).map(row => ({
+      nome:       row.nome,
+      entrada:    row.entrada    ?? "",
+      pausa_10_1: row.pausa_10_1 ?? "",
+      pausa_20:   row.pausa_20   ?? "",
+      pausa_10_2: row.pausa_10_2 ?? "",
+      saida:      row.saida      ?? "",
+    }));
+  }
+
   return true;
+}
+
+/* --------------------------------------------------------------------------
+   Funções de persistência no Supabase para cada entidade mutável
+   -------------------------------------------------------------------------- */
+
+/**
+ * Persiste as flags de um colaborador no Supabase.
+ * Usa upsert com onConflict: "colaborador_nome".
+ * @param {string} nome
+ */
+async function saveFlag(nome) {
+  if (!supa) return;
+  const f = getFlagDefault(nome);
+  try {
+    const { error } = await supa.from("pitstop_flags").upsert({
+      colaborador_nome: nome,
+      ferias:    f.ferias    ?? false,
+      atestado:  f.atestado  ?? false,
+      off:       f.off       ?? false,
+      saida_ant: f.saida_ant ?? false,
+      atraso:    f.atraso    ?? false,
+      atraso_min: f.atraso_min ?? 60,
+      rodizio:   f.rodizio   ?? false,
+      chat:      f.chat      ?? false,
+      atualizado_em: new Date().toISOString(),
+    }, { onConflict: "colaborador_nome" });
+    if (error) console.warn("[saveFlag]", error);
+  } catch (err) {
+    console.warn("[saveFlag] exception:", err);
+  }
+}
+
+/**
+ * Persiste o atestado de um colaborador no Supabase.
+ * @param {string} nome
+ */
+async function saveAtestado(nome) {
+  if (!supa) return;
+  const at = atestados[nome];
+  try {
+    if (!at) {
+      // Remove o atestado
+      const { error } = await supa.from("pitstop_atestados").delete().eq("colaborador_nome", nome);
+      if (error) console.warn("[saveAtestado delete]", error);
+    } else {
+      const { error } = await supa.from("pitstop_atestados").upsert({
+        colaborador_nome: nome,
+        dias:            at.dias,
+        data_inicio:     at.dataInicio,
+        horario_chegada: horariosChegada[nome] ?? null,
+        atualizado_em:   new Date().toISOString(),
+      }, { onConflict: "colaborador_nome" });
+      if (error) console.warn("[saveAtestado upsert]", error);
+    }
+  } catch (err) {
+    console.warn("[saveAtestado] exception:", err);
+  }
+}
+
+/**
+ * Persiste toda a escala de sábado no Supabase.
+ * Estratégia: delete all + insert (escala é pequena e temporária).
+ */
+async function saveEscalaSabadoSupabase() {
+  if (!supa) return;
+  try {
+    // Apaga tudo e reinserere
+    const { error: delErr } = await supa.from("pitstop_escala_sabado").delete().neq("nome", "__never__");
+    if (delErr) { console.warn("[saveEscalaSabado delete]", delErr); return; }
+
+    if (escala_sabado.length === 0) return;
+
+    const rows = escala_sabado.map(e => ({
+      nome:       e.nome,
+      entrada:    e.entrada    ?? "",
+      pausa_10_1: e.pausa_10_1 ?? "",
+      pausa_20:   e.pausa_20   ?? "",
+      pausa_10_2: e.pausa_10_2 ?? "",
+      saida:      e.saida      ?? "",
+      atualizado_em: new Date().toISOString(),
+    }));
+
+    const { error: insErr } = await supa.from("pitstop_escala_sabado").insert(rows);
+    if (insErr) console.warn("[saveEscalaSabado insert]", insErr);
+  } catch (err) {
+    console.warn("[saveEscalaSabado] exception:", err);
+  }
 }
 
 /* ==========================================================================
@@ -340,9 +549,11 @@ function renderAll() {
   renderPendencias();
   renderAniversarios();
   renderDash();
+  renderEscalaSabado();
 
   // IMPORTANTE
   popularSelectFeedback();
+  popularSelectSabado();
 }
 
 /** Atualiza os cards de métricas no dashboard. */
@@ -351,6 +562,257 @@ function renderMetrics() {
   $("metric-tecnicos").textContent = colaboradores.filter((c) => c.cargo === "Técnicos").length;
   $("metric-gestao").textContent = colaboradores.filter((c) => c.cargo === "Gestão Pit Stop").length;
   $("metric-folgas").textContent = folgas.filter(isFolgaAtualOuFutura).length;
+
+  // Painel de indicadores gerenciais
+  renderIndicadoresGerenciais();
+  renderBarraOcupacao();
+}
+
+/** Renderiza indicadores gerenciais no dashboard. */
+function renderIndicadoresGerenciais() {
+  const el = $("painel-indicadores");
+  if (!el) return;
+
+  const total = colaboradores.length;
+  const ausentes = colaboradores.filter(c => {
+    const f = getFlagDefault(c.nome);
+    return f.off || f.ferias || f.atestado;
+  }).length;
+  const ativos = total - ausentes;
+  const emAtraso = colaboradores.filter(c => getFlagDefault(c.nome).atraso).length;
+  const emChat = colaboradores.filter(c => getFlagDefault(c.nome).chat).length;
+  const taxaPresenca = total > 0 ? Math.round((ativos / total) * 100) : 0;
+
+  el.innerHTML = `
+    <div class="indicadores-grid">
+      <div class="indicador-card ind-green">
+        <div class="ind-icon">✅</div>
+        <div class="ind-body">
+          <strong>${ativos}</strong>
+          <span>Presentes</span>
+        </div>
+      </div>
+      <div class="indicador-card ind-red">
+        <div class="ind-icon">⛔</div>
+        <div class="ind-body">
+          <strong>${ausentes}</strong>
+          <span>Ausentes</span>
+        </div>
+      </div>
+      <div class="indicador-card ind-yellow">
+        <div class="ind-icon">⏰</div>
+        <div class="ind-body">
+          <strong>${emAtraso}</strong>
+          <span>Em atraso</span>
+        </div>
+      </div>
+      <div class="indicador-card ind-blue">
+        <div class="ind-icon">💬</div>
+        <div class="ind-body">
+          <strong>${emChat}</strong>
+          <span>Em chat</span>
+        </div>
+      </div>
+      <div class="indicador-card ind-purple" style="grid-column:1/-1;">
+        <div class="ind-icon">📊</div>
+        <div class="ind-body">
+          <strong>${taxaPresenca}%</strong>
+          <span>Taxa de presença hoje</span>
+        </div>
+        <div class="ind-bar-wrap">
+          <div class="ind-bar" style="width:${taxaPresenca}%;background:${taxaPresenca >= 80 ? 'var(--green,#4ade80)' : taxaPresenca >= 60 ? 'var(--gold)' : 'var(--red)'};"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/** Renderiza a barra de ocupação do turno atual. */
+function renderBarraOcupacao() {
+  const el = $("barra-ocupacao");
+  if (!el) return;
+
+  const agora = new Date();
+  const horaAtual = agora.getHours() + agora.getMinutes() / 60;
+
+  // Determinar turno atual
+  const isManhaAtual = horaAtual < 10;
+  const turnoLabel = isManhaAtual ? "Turno da Manhã" : "Turno da Tarde";
+  const turnoId = isManhaAtual ? "manha" : "tarde";
+
+  const colabsTurno = colaboradores.filter(c =>
+    getTurnoPausa(getPausaDefault(c.nome).entrada) === turnoId
+  );
+
+  const total = colabsTurno.length;
+  const ativos = colabsTurno.filter(c => {
+    const f = getFlagDefault(c.nome);
+    return !f.off && !f.ferias && !f.atestado;
+  }).length;
+
+  const perc = total > 0 ? Math.round((ativos / total) * 100) : 0;
+  const cor = perc >= 75 ? '#4ade80' : perc >= 50 ? 'var(--gold)' : 'var(--red)';
+
+  el.innerHTML = `
+    <div class="ocupacao-header">
+      <span class="ocupacao-label">⚡ ${turnoLabel}</span>
+      <span class="ocupacao-percent" style="color:${cor}">${perc}% ocupado</span>
+    </div>
+    <div class="ocupacao-bar-track">
+      <div class="ocupacao-bar-fill" style="width:${perc}%;background:${cor}"></div>
+    </div>
+    <div class="ocupacao-sub">${ativos} de ${total} colaboradores disponíveis</div>
+  `;
+}
+
+
+/* ==========================================================================
+   ESCALA DE SÁBADO
+   ========================================================================== */
+
+/** Popula o select de colaboradores no modal de sábado. */
+function popularSelectSabado() {
+  const sel = $("sabado-colab");
+  if (!sel) return;
+  sel.innerHTML = `<option value="">Selecionar colaborador...</option>` +
+    colaboradores
+      .filter(c => c.ativo !== false)
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map(c => `<option value="${escapeHtml(c.nome)}">${escapeHtml(c.nome)}</option>`)
+      .join("");
+}
+
+/** Renderiza a lista de escala de sábado. */
+function renderEscalaSabado() {
+  const lista = $("sabado-list");
+  if (!lista) return;
+
+  if (!escala_sabado.length) {
+    lista.innerHTML = `<div class="sabado-vazio">Nenhuma escala de sábado cadastrada. Clique em "+ Adicionar" para começar.</div>`;
+    return;
+  }
+
+  lista.innerHTML = "";
+  escala_sabado.forEach((entry, idx) => {
+    const row = document.createElement("div");
+    row.className = "sabado-row";
+    const nomeSeguro = escapeHtml(entry.nome);
+    const isGestao = colaboradores.find(c => c.nome === entry.nome)?.cargo === "Gestão Pit Stop";
+
+    row.innerHTML = `
+      <div class="pausa-nome" style="min-width:130px;flex:0 0 130px;">
+        <div class="avatar" style="width:30px;height:30px;font-size:11px;flex-shrink:0;">${initials(entry.nome)}</div>
+        <div>
+          <strong style="font-size:13px;">${nomeSeguro}</strong>
+          <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}" style="margin-top:2px;display:block;">${isGestao ? "Gestão" : "Técnico"}</span>
+        </div>
+      </div>
+      <div class="pausa-fields" style="flex:1;">
+        <div class="pausa-field"><label>Entrada</label><input type="time" value="${entry.entrada||""}" onchange="setSabado(${idx},'entrada',this.value)" /></div>
+        <div class="pausa-divider">·</div>
+        <div class="pausa-field"><label>Pausa 10</label><input type="time" value="${entry.pausa_10_1||""}" onchange="setSabado(${idx},'pausa_10_1',this.value)" /></div>
+        <div class="pausa-divider">·</div>
+        <div class="pausa-field"><label>Pausa 20</label><input type="time" value="${entry.pausa_20||""}" onchange="setSabado(${idx},'pausa_20',this.value)" /></div>
+        <div class="pausa-divider">·</div>
+        <div class="pausa-field"><label>Pausa 10</label><input type="time" value="${entry.pausa_10_2||""}" onchange="setSabado(${idx},'pausa_10_2',this.value)" /></div>
+        <div class="pausa-divider">→</div>
+        <div class="pausa-field"><label>Saída</label><input type="time" value="${entry.saida||""}" onchange="setSabado(${idx},'saida',this.value)" /></div>
+      </div>
+      <button class="btn-remove" type="button" onclick="removeSabado(${idx})" title="Remover">×</button>
+    `;
+    lista.appendChild(row);
+  });
+}
+
+/**
+ * Atualiza um campo da escala de sábado.
+ * @param {number} idx
+ * @param {string} campo
+ * @param {string} valor
+ */
+window.setSabado = (idx, campo, valor) => {
+  if (!escala_sabado[idx]) return;
+  escala_sabado[idx][campo] = valor;
+  saveLocal();
+  saveEscalaSabadoSupabase();
+};
+
+/**
+ * Remove uma entrada da escala de sábado.
+ * @param {number} idx
+ */
+window.removeSabado = (idx) => {
+  escala_sabado.splice(idx, 1);
+  saveLocal();
+  saveEscalaSabadoSupabase();
+  renderEscalaSabado();
+  toast("Entrada removida da escala de sábado.");
+};
+
+/** Abre o modal de adição de escala de sábado. */
+function newSabadoEntry() {
+  ["sabado-entrada","sabado-pausa10_1","sabado-pausa20","sabado-pausa10_2","sabado-saida"].forEach(id => {
+    const el = $(id);
+    if (el) el.value = "";
+  });
+  $("sabado-colab").value = "";
+  openModal("modal-sabado");
+}
+
+/** Salva uma nova entrada na escala de sábado. */
+function saveSabadoEntry() {
+  const nome = $("sabado-colab").value;
+  if (!nome) {
+    toast("Selecione um colaborador.");
+    return;
+  }
+  const entry = {
+    nome,
+    entrada:    $("sabado-entrada").value,
+    pausa_10_1: $("sabado-pausa10_1").value,
+    pausa_20:   $("sabado-pausa20").value,
+    pausa_10_2: $("sabado-pausa10_2").value,
+    saida:      $("sabado-saida").value,
+  };
+  // Remove entrada anterior do mesmo colaborador se existir
+  escala_sabado = escala_sabado.filter(e => e.nome !== nome);
+  escala_sabado.push(entry);
+  saveLocal();
+  saveEscalaSabadoSupabase();
+  closeModal("modal-sabado");
+  renderEscalaSabado();
+  toast(`${nome} adicionado(a) à escala de sábado.`);
+}
+
+/** Envia a escala de sábado no Discord via Hermes. */
+async function sendEscalaSabado() {
+  if (!escala_sabado.length) {
+    toast("Nenhuma escala de sábado para enviar.");
+    return;
+  }
+  try {
+    const colabsEnvio = escala_sabado.map(e => colaboradores.find(c => c.nome === e.nome)).filter(Boolean);
+    const pausasEnvio = {};
+    escala_sabado.forEach(e => { pausasEnvio[e.nome] = e; });
+    await sendHermes("pitstop-pausas", { pausas: pausasEnvio, colaboradores: colabsEnvio, contexto: "sabado" });
+    toast("Escala de sábado enviada no Discord.");
+  } catch (err) {
+    toast("Erro: " + err.message);
+  }
+}
+
+/** Limpa toda a escala de sábado. */
+function clearEscalaSabado() {
+  if (!escala_sabado.length) {
+    toast("Escala de sábado já está vazia.");
+    return;
+  }
+  if (!confirm("Limpar toda a escala de sábado?")) return;
+  escala_sabado = [];
+  saveLocal();
+  saveEscalaSabadoSupabase();
+  renderEscalaSabado();
+  toast("Escala de sábado limpa.");
 }
 
 /** Renderiza a lista de membros da equipe. */
@@ -381,7 +843,12 @@ function renderEquipe() {
           </div>
         </div>
       </div>
-      <button class="btn" type="button" onclick="openColab(${i})">Editar</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+        <button class="btn" type="button" onclick="openColab(${i})">Editar</button>
+        <button class="btn btn-delete-colab" type="button" onclick="confirmarExclusaoColab(${i})" title="Excluir colaborador" style="height:36px;padding:0 12px;background:rgba(251,113,133,0.08);border-color:rgba(251,113,133,0.2);color:var(--red);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
     `;
     lista.appendChild(row);
   });
@@ -408,14 +875,504 @@ function getPausaDefault(nome) {
 
 /**
  * Determina o turno com base no horário de entrada.
+ * Entradas a partir de 10:00 são consideradas turno da tarde.
  * @param {string} entrada
  * @returns {"manha" | "tarde"}
  */
 function getTurnoPausa(entrada) {
   if (!entrada) return "manha";
-  const [hora] = entrada.split(":").map(Number);
-  return hora >= 12 ? "tarde" : "manha";
+  const [hora, min] = entrada.split(":").map(Number);
+  const totalMin = hora * 60 + (min || 0);
+  return totalMin >= 10 * 60 ? "tarde" : "manha";
 }
+
+/**
+ * Retorna o objeto de flags de um colaborador (cria se não existir).
+ * @param {string} nome
+ * @returns {object}
+ */
+function getFlagDefault(nome) {
+  if (!flags[nome]) {
+    flags[nome] = { ferias: false, atestado: false, off: false, saida_ant: false, atraso: false, atraso_min: 60, rodizio: false, chat: false };
+  }
+  return flags[nome];
+}
+
+/**
+ * Alterna uma flag de status de um colaborador.
+ * @param {string} nome
+ * @param {string} flag
+ */
+window.toggleFlag = (nome, flag) => {
+  const f = getFlagDefault(nome);
+
+  // Flags que abrem modal ao ATIVAR
+  if (flag === 'atestado' && !f.atestado) {
+    abrirModalAtestado(nome);
+    return;
+  }
+
+  if (flag === 'atraso' && !f.atraso) {
+    abrirModalAtraso(nome);
+    return;
+  }
+
+  if (flag === 'off' && !f.off) {
+    abrirModalOff(nome);
+    return;
+  }
+
+  if (flag === 'ferias' && !f.ferias) {
+    abrirModalFerias(nome);
+    return;
+  }
+
+  // Limpeza ao DESATIVAR flags com estado
+  if (flag === 'atestado' && f.atestado) {
+    delete atestados[nome];
+    delete horariosChegada[nome + '_atestado'];
+    saveAtestado(nome); // remove do Supabase
+    toast(`Atestado de ${nome} removido.`);
+  }
+
+  if (flag === 'atraso' && f.atraso) {
+    delete horariosChegada[nome];
+    saveAtestado(nome); // atualiza horario_chegada no Supabase
+    toast(`Atraso de ${nome} removido.`);
+  }
+
+  if (flag === 'off' && f.off) {
+    toast(`${nome} voltou para a escala.`);
+  }
+
+  if (flag === 'ferias' && f.ferias) {
+    toast(`Férias de ${nome} removidas.`);
+  }
+
+  // Toasts para flags simples
+  const toastMsgs = {
+    saida_ant: f.saida_ant ? `Saída antecipada de ${nome} removida.` : `Saída antecipada de ${nome} marcada.`,
+    rodizio:   f.rodizio   ? `Rodízio de ${nome} desativado.`         : `${nome} marcado(a) em rodízio.`,
+    chat:      f.chat      ? `Chat de ${nome} desativado.`             : `${nome} em modo chat.`,
+  };
+  if (toastMsgs[flag]) toast(toastMsgs[flag]);
+
+  f[flag] = !f[flag];
+  saveLocal();
+  saveFlag(nome); // persiste no Supabase
+  renderPausas();
+  renderDash();
+  renderOffSugestoes();
+  renderAtrasoAlertas();
+};
+
+/** Garante que o modal de atraso existe no DOM (cria dinamicamente se necessário). */
+function garantirModalAtraso() {
+  if (document.getElementById('modal-atraso')) return;
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modal-atraso';
+  div.setAttribute('role', 'dialog');
+  div.setAttribute('aria-modal', 'true');
+  div.innerHTML = `
+    <div class="modal modal-atraso-inner" style="gap:0;padding:0;overflow:hidden;max-width:460px;">
+      <div class="modal-folga-header">
+        <div class="modal-folga-icon" style="background:rgba(239,68,68,0.12);color:#f87171;border-color:rgba(239,68,68,0.25);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+          </svg>
+        </div>
+        <div>
+          <h2 style="font-size:18px;margin:0;">Registrar atraso</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">Colaborador: <strong id="modal-atraso-nome"></strong></p>
+        </div>
+        <button class="modal-close-btn" type="button" id="btn-close-modal-atraso" aria-label="Fechar" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Horário real de chegada</label>
+          <input id="atraso-horario-chegada" type="time" />
+          <small id="atraso-entrada-info" style="color:var(--muted);font-size:12px;margin-top:4px;display:block;"></small>
+        </div>
+        <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:#f87171;">
+          ⏰ A 1ª pausa será calculada automaticamente como <strong>1 hora após a chegada real</strong> e o Discord será notificado.
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px 20px;border-top:1px solid var(--border);">
+        <button class="btn" type="button" id="btn-cancel-modal-atraso">Cancelar</button>
+        <button class="btn" id="btn-confirm-atraso" type="button" style="background:rgba(239,68,68,0.14);border-color:rgba(239,68,68,0.35);color:#f87171;">Confirmar atraso</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+  // Fechar ao clicar fora
+  div.addEventListener('click', (e) => { if (e.target === div) div.classList.remove('open'); });
+  document.getElementById('btn-close-modal-atraso').onclick = () => div.classList.remove('open');
+  document.getElementById('btn-cancel-modal-atraso').onclick = () => div.classList.remove('open');
+}
+
+/** Abre o modal para registrar horário de chegada (atraso). */
+function abrirModalAtraso(nome) {
+  garantirModalAtraso();
+  const p = getPausaDefault(nome);
+  const modal = document.getElementById('modal-atraso');
+  const nomeEl = document.getElementById('modal-atraso-nome');
+  const chegadaInput = document.getElementById('atraso-horario-chegada');
+  const entradaInfo = document.getElementById('atraso-entrada-info');
+
+  nomeEl.textContent = nome;
+  chegadaInput.value = horariosChegada[nome] || '';
+  entradaInfo.textContent = p.entrada ? `Entrada prevista: ${p.entrada}` : 'Entrada prevista não definida';
+
+  document.getElementById('btn-confirm-atraso').onclick = () => {
+    const chegada = chegadaInput.value;
+    if (!chegada) { toast('Informe o horário de chegada.'); return; }
+    horariosChegada[nome] = chegada;
+    const f = getFlagDefault(nome);
+    f.atraso = true;
+    if (p.entrada) {
+      const [hh, mm] = chegada.split(':').map(Number);
+      const [eh, em] = p.entrada.split(':').map(Number);
+      const diffMin = (hh * 60 + mm) - (eh * 60 + em);
+      f.atraso_min = Math.max(diffMin, 1);
+    }
+    saveLocal();
+    saveFlag(nome);
+    saveAtestado(nome); // salva horario_chegada no Supabase
+    modal.classList.remove('open');
+    renderPausas();
+    renderDash();
+    renderAtrasoAlertas();
+    enviarAtrasoDiscord(nome, chegada);
+    toast(`Atraso de ${nome} registrado. Pausa ajustada automaticamente.`);
+  };
+
+  modal.classList.add('open');
+}
+
+
+/* ---- Modal OFF ---- */
+
+/** Garante que o modal de OFF existe no DOM. */
+function garantirModalOff() {
+  if (document.getElementById('modal-off')) return;
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modal-off';
+  div.setAttribute('role', 'dialog');
+  div.setAttribute('aria-modal', 'true');
+  div.innerHTML = `
+    <div class="modal modal-atraso-inner" style="gap:0;padding:0;overflow:hidden;max-width:460px;">
+      <div class="modal-folga-header">
+        <div class="modal-folga-icon" style="background:rgba(148,163,184,0.12);color:#94a3b8;border-color:rgba(148,163,184,0.25);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+          </svg>
+        </div>
+        <div>
+          <h2 style="font-size:18px;margin:0;">Marcar como OFF</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">Colaborador: <strong id="modal-off-nome"></strong></p>
+        </div>
+        <button class="modal-close-btn" type="button" id="btn-close-modal-off" aria-label="Fechar" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+        <div style="background:rgba(148,163,184,0.06);border:1px solid rgba(148,163,184,0.15);border-radius:10px;padding:12px 16px;font-size:13px;color:#94a3b8;line-height:1.5;">
+          ⛔ O colaborador <strong id="modal-off-nome2"></strong> será marcado como <strong>OFF</strong> e <strong>não aparecerá na escala de pausas</strong>. Uma sugestão de reorganização será exibida.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Motivo (opcional)</label>
+          <input id="off-motivo" type="text" placeholder="Ex: folga, feriado, escala diferente..." />
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px 20px;border-top:1px solid var(--border);">
+        <button class="btn" type="button" id="btn-cancel-modal-off">Cancelar</button>
+        <button class="btn" id="btn-confirm-off" type="button" style="background:rgba(148,163,184,0.14);border-color:rgba(148,163,184,0.35);color:#94a3b8;">⛔ Confirmar OFF</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.addEventListener('click', (e) => { if (e.target === div) div.classList.remove('open'); });
+  document.getElementById('btn-close-modal-off').onclick  = () => div.classList.remove('open');
+  document.getElementById('btn-cancel-modal-off').onclick = () => div.classList.remove('open');
+}
+
+/** Abre o modal de confirmação de OFF. */
+function abrirModalOff(nome) {
+  garantirModalOff();
+  const modal = document.getElementById('modal-off');
+  document.getElementById('modal-off-nome').textContent  = nome;
+  document.getElementById('modal-off-nome2').textContent = nome;
+  document.getElementById('off-motivo').value = '';
+
+  document.getElementById('btn-confirm-off').onclick = () => {
+    const f = getFlagDefault(nome);
+    f.off = true;
+    saveLocal();
+    saveFlag(nome);
+    modal.classList.remove('open');
+    renderPausas();
+    renderDash();
+    renderOffSugestoes();
+    toast(`${nome} marcado(a) como OFF.`);
+  };
+
+  modal.classList.add('open');
+}
+
+/* ---- Modal FERIAS (flag) ---- */
+
+/** Garante que o modal de Férias flag existe no DOM. */
+function garantirModalFeriasFlag() {
+  if (document.getElementById('modal-ferias-flag')) return;
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modal-ferias-flag';
+  div.setAttribute('role', 'dialog');
+  div.setAttribute('aria-modal', 'true');
+  div.innerHTML = `
+    <div class="modal modal-atraso-inner" style="gap:0;padding:0;overflow:hidden;max-width:460px;">
+      <div class="modal-folga-header">
+        <div class="modal-folga-icon" style="background:rgba(34,197,94,0.12);color:#4ade80;border-color:rgba(34,197,94,0.25);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 8C8 10 5.9 16.17 3.82 19.34a1 1 0 0 0 1.64 1.15C7.2 18.35 9.88 17 16 17c0-4-1-7-1-7s2 0 4 3c0-5-1-9-1-9s1 0 2 2c0-4-5-6-4-6z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 style="font-size:18px;margin:0;">Marcar como Férias</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">Colaborador: <strong id="modal-ferias-flag-nome"></strong></p>
+        </div>
+        <button class="modal-close-btn" type="button" id="btn-close-modal-ferias-flag" aria-label="Fechar" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+        <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:10px;padding:12px 16px;font-size:13px;color:#4ade80;line-height:1.5;">
+          🌴 O colaborador <strong id="modal-ferias-flag-nome2"></strong> será marcado como <strong>em Férias</strong> e <strong>não aparecerá na escala de pausas</strong> enquanto a flag estiver ativa.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Período / Observação (opcional)</label>
+          <input id="ferias-flag-obs" type="text" placeholder="Ex: até 20/06, férias aprovadas..." />
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px 20px;border-top:1px solid var(--border);">
+        <button class="btn" type="button" id="btn-cancel-modal-ferias-flag">Cancelar</button>
+        <button class="btn" id="btn-confirm-ferias-flag" type="button" style="background:rgba(34,197,94,0.14);border-color:rgba(34,197,94,0.35);color:#4ade80;">🌴 Confirmar Férias</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.addEventListener('click', (e) => { if (e.target === div) div.classList.remove('open'); });
+  document.getElementById('btn-close-modal-ferias-flag').onclick  = () => div.classList.remove('open');
+  document.getElementById('btn-cancel-modal-ferias-flag').onclick = () => div.classList.remove('open');
+}
+
+/** Abre o modal de confirmação de Férias (flag). */
+function abrirModalFerias(nome) {
+  garantirModalFeriasFlag();
+  const modal = document.getElementById('modal-ferias-flag');
+  document.getElementById('modal-ferias-flag-nome').textContent  = nome;
+  document.getElementById('modal-ferias-flag-nome2').textContent = nome;
+  document.getElementById('ferias-flag-obs').value = '';
+
+  document.getElementById('btn-confirm-ferias-flag').onclick = () => {
+    const f = getFlagDefault(nome);
+    f.ferias = true;
+    saveLocal();
+    saveFlag(nome);
+    modal.classList.remove('open');
+    renderPausas();
+    renderDash();
+    toast(`🌴 ${nome} marcado(a) como em Férias.`);
+  };
+
+  modal.classList.add('open');
+}
+
+/** Envia aviso de atraso para o Discord do colaborador. */
+async function enviarAtrasoDiscord(nome, horarioChegada) {
+  const colab = colaboradores.find(c => c.nome === nome);
+  if (!colab || !colab.discord_id) return;
+  const p = getPausaDefault(nome);
+  // Pausa deve ser 1h após chegada real
+  const [hh, mm] = horarioChegada.split(':').map(Number);
+  const pausaMin = hh * 60 + mm + 60;
+  const pausaH = String(Math.floor(pausaMin / 60)).padStart(2, '0');
+  const pausaM = String(pausaMin % 60).padStart(2, '0');
+  const pausaHorario = `${pausaH}:${pausaM}`;
+  try {
+    await sendHermes('pitstop-pausas', {
+      pausas: { [nome]: { ...p, pausa_10_1: pausaHorario, _atraso: true, _chegada: horarioChegada } },
+      colaboradores: [colab],
+      contexto: 'atraso'
+    });
+  } catch (err) {
+    console.warn('[enviarAtrasoDiscord]', err);
+  }
+}
+
+/** Garante que o modal de atestado existe no DOM (cria dinamicamente se necessário). */
+function garantirModalAtestado() {
+  if (document.getElementById('modal-atestado')) return;
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modal-atestado';
+  div.setAttribute('role', 'dialog');
+  div.setAttribute('aria-modal', 'true');
+  div.innerHTML = `
+    <div class="modal modal-atestado-inner" style="gap:0;padding:0;overflow:hidden;max-width:460px;">
+      <div class="modal-folga-header">
+        <div class="modal-folga-icon" style="background:rgba(251,113,133,0.12);color:var(--red);border-color:rgba(251,113,133,0.25);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M12 14v4M10 16h4"/>
+          </svg>
+        </div>
+        <div>
+          <h2 style="font-size:18px;margin:0;">Registrar atestado</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">Colaborador: <strong id="modal-atestado-nome"></strong></p>
+        </div>
+        <button type="button" id="btn-close-modal-atestado" aria-label="Fechar" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Quantos dias de atestado?</label>
+          <input id="atestado-dias" type="number" min="1" max="365" placeholder="Ex: 3" />
+        </div>
+        <div style="background:rgba(251,113,133,0.06);border:1px solid rgba(251,113,133,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--red);">
+          🏥 O colaborador <strong>não aparecerá nas próximas pausas</strong> e voltará automaticamente após o período informado.
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px 20px;border-top:1px solid var(--border);">
+        <button class="btn" type="button" id="btn-cancel-modal-atestado">Cancelar</button>
+        <button class="btn" id="btn-confirm-atestado" type="button" style="background:rgba(251,113,133,0.14);border-color:rgba(251,113,133,0.35);color:var(--red);">Confirmar atestado</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.addEventListener('click', (e) => { if (e.target === div) div.classList.remove('open'); });
+  document.getElementById('btn-close-modal-atestado').onclick = () => div.classList.remove('open');
+  document.getElementById('btn-cancel-modal-atestado').onclick = () => div.classList.remove('open');
+}
+
+/** Abre o modal para registrar dias de atestado. */
+function abrirModalAtestado(nome) {
+  garantirModalAtestado();
+  const modal = document.getElementById('modal-atestado');
+  const nomeEl = document.getElementById('modal-atestado-nome');
+  const diasInput = document.getElementById('atestado-dias');
+
+  nomeEl.textContent = nome;
+  diasInput.value = atestados[nome]?.dias || '';
+
+  document.getElementById('btn-confirm-atestado').onclick = () => {
+    const dias = parseInt(diasInput.value);
+    if (!dias || dias < 1) { toast('Informe a quantidade de dias.'); return; }
+    const hoje = new Date();
+    const dataInicio = hoje.toISOString().split('T')[0];
+    atestados[nome] = { dias, dataInicio };
+    const f = getFlagDefault(nome);
+    f.atestado = true;
+    saveLocal();
+    saveFlag(nome);
+    saveAtestado(nome);
+    modal.classList.remove('open');
+    renderPausas();
+    renderDash();
+    toast(`Atestado de ${nome}: ${dias} dia(s). Voltará automaticamente após ${dias} dia(s).`);
+    agendarRetornoAtestado(nome, dias, dataInicio);
+  };
+
+  modal.classList.add('open');
+}
+
+/** Verifica atestados vencidos e reativa colaboradores. */
+function verificarAtestadosVencidos() {
+  const hoje = todayISO();
+  let mudou = false;
+  Object.keys(atestados).forEach(nome => {
+    const at = atestados[nome];
+    if (!at) return;
+    const dataInicio = new Date(at.dataInicio + 'T12:00:00');
+    const dataFim = new Date(dataInicio);
+    dataFim.setDate(dataFim.getDate() + at.dias);
+    const dataFimISO = dataFim.toISOString().split('T')[0];
+    if (hoje > dataFimISO) {
+      // Atestado vencido — reativar
+      const f = getFlagDefault(nome);
+      f.atestado = false;
+      delete atestados[nome];
+      mudou = true;
+      saveFlag(nome);
+      saveAtestado(nome);
+      console.log(`[Atestado] ${nome} retornou automaticamente.`);
+    }
+  });
+  if (mudou) {
+    saveLocal();
+    renderPausas();
+    renderDash();
+  }
+}
+
+function agendarRetornoAtestado(nome, dias, dataInicio) {
+  const dataInicioDate = new Date(dataInicio + 'T12:00:00');
+  const dataFim = new Date(dataInicioDate);
+  dataFim.setDate(dataFim.getDate() + dias);
+  const agora = new Date();
+  const msAteRetorno = dataFim - agora;
+  if (msAteRetorno > 0 && msAteRetorno < 7 * 24 * 60 * 60 * 1000) {
+    // Só agenda se for em menos de 7 dias (para não vazar memória)
+    setTimeout(() => {
+      verificarAtestadosVencidos();
+    }, msAteRetorno + 60000);
+  }
+}
+
+/**
+ * Atualiza os minutos de atraso de um colaborador.
+ * @param {string} nome
+ * @param {number} min
+ */
+window.setAtrasoMin = (nome, min) => {
+  const f = getFlagDefault(nome);
+  f.atraso_min = Number(min) || 60;
+  saveLocal();
+  renderAtrasoAlertas();
+};
+
+/**
+ * Envia a pausa de um colaborador via Hermes individualmente.
+ * @param {string} nome
+ */
+window.sendPausaIndividual = async (nome) => {
+  const p = getPausaDefault(nome);
+  const colab = colaboradores.find(c => c.nome === nome);
+  if (!colab || !colab.discord_id) {
+    toast("Colaborador sem Discord ID configurado.");
+    return;
+  }
+  // Marcar botão como enviado
+  const btn = document.querySelector(`[data-send-nome="${CSS.escape(nome)}"]`);
+  if (btn) {
+    btn.classList.add("btn-sent");
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Enviado`;
+    btn.disabled = true;
+    // Reset após 8s
+    setTimeout(() => {
+      btn.classList.remove("btn-sent");
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Enviar pausa`;
+      btn.disabled = false;
+    }, 8000);
+  }
+  try {
+    await sendHermes("pitstop-pausas", { pausas: { [nome]: p }, colaboradores: [colab], individual: true });
+    toast(`Pausa de ${nome} enviada no Discord.`);
+  } catch (err) {
+    if (btn) {
+      btn.classList.remove("btn-sent");
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Enviar pausa`;
+      btn.disabled = false;
+    }
+    toast("Erro: " + err.message);
+  }
+};
 
 /**
  * Monta o card de pausas de um colaborador.
@@ -423,74 +1380,274 @@ function getTurnoPausa(entrada) {
  * @returns {HTMLElement}
  */
 function buildPausaRow(colab) {
-  const p = getPausaDefault(colab.nome);
+  const nome = colab.nome;
+  const p = getPausaDefault(nome);
+  const f = getFlagDefault(nome);
   const isGestao = colab.cargo === "Gestão Pit Stop";
-  const nomeArg = JSON.stringify(colab.nome);
-  const nomeSeguro = escapeHtml(colab.nome);
+  const nomeSeguro = escapeHtml(nome);
   const row = document.createElement("div");
   row.className = "pausa-row";
 
+  // Classes da row de acordo com flags ativas
+  if (f.off)  row.classList.add("flag-off");
+  if (f.chat) row.classList.add("flag-chat");
+
+  // Chips das flags ativas para exibir no nome
+  const chipMap = {
+    ferias:    { cls: "chip-ferias",    label: "FÉRIAS" },
+    atestado:  { cls: "chip-atestado",  label: "ATESTADO" },
+    off:       { cls: "chip-off",       label: "OFF" },
+    saida_ant: { cls: "chip-saida-ant", label: "S. ANTECIPADA" },
+    atraso:    { cls: "chip-atraso",    label: "ATRASO" },
+    rodizio:   { cls: "chip-rodizio",   label: "RODÍZIO" },
+    chat:      { cls: "chip-chat",      label: "CHAT" },
+  };
+
+  const activeChips = Object.entries(chipMap)
+    .filter(([key]) => f[key])
+    .map(([, v]) => `<span class="flag-chip ${v.cls}">${v.label}</span>`)
+    .join("");
+
+  // Definição dos flags agrupados por categoria visual
+  const flagGroups = [
+    {
+      cat: "AUSÊNCIA",
+      flags: [
+        { key: "ferias",   label: "🌴 Férias" },
+        { key: "atestado", label: "🏥 Atestado" },
+        { key: "off",      label: "⛔ OFF" },
+      ],
+    },
+    {
+      cat: "TURNO",
+      flags: [
+        { key: "saida_ant", label: "🚪 S. Antecipada" },
+        { key: "atraso",    label: "⏰ Atraso" },
+      ],
+    },
+    {
+      cat: "ESCALA",
+      flags: [
+        { key: "rodizio", label: "🔄 Rodízio" },
+        { key: "chat",    label: "💬 Chat" },
+      ],
+    },
+  ];
+
+  // Monta HTML dos botões de flag agrupados por categoria
+  const flagBtnsHtml = flagGroups.map((group, gi) => {
+    const btns = group.flags.map(({ key, label }) => {
+      const activeClass = f[key] ? `flag-on-${key.replace("_", "-")}` : "";
+      return `<button type="button" class="flag-btn ${activeClass}" data-flag="${key}">${label}</button>`;
+    }).join("");
+    const sep = gi < flagGroups.length - 1 ? `<span class="flag-group-sep"></span>` : "";
+    return `<span class="flag-cat-label">${group.cat}</span><span class="flag-group">${btns}</span>${sep}`;
+  }).join("");
+
+  // Aplicar classe de status de borda lateral ao row
+  const statusClasses = ["ferias","atestado","off","atraso","saida_ant","rodizio","chat"];
+  for (const s of statusClasses) {
+    if (f[s]) {
+      row.classList.add(`status-${s.replace("_","-")}`);
+      break; // só o mais prioritário
+    }
+  }
+
+  // Campo de minutos de atraso (só quando atraso ativo)
+  const atrasoFieldHtml = f.atraso ? `
+    <div class="atraso-field">
+      <span>Atraso de</span>
+      <input type="number" class="atraso-min-input" min="1" max="480" value="${f.atraso_min || 60}" />
+      <span>min</span>
+    </div>` : "";
+
+  // Botão envio individual
+  const isAusente = f.off || f.ferias || f.atestado;
+  const btnOcultarHtml = !isAusente ? `
+    <button type="button" class="btn-ocultar-hoje btn-ocultar-js" title="Ocultar da escala hoje (ativar OFF rapidamente)" style="height:20px;padding:0 7px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.04em;cursor:pointer;font-family:var(--font,'DM Sans',sans-serif);transition:all .15s;white-space:nowrap;">
+      OCULTAR
+    </button>` : `
+    <button type="button" class="btn-restaurar-js" title="Restaurar na escala" style="height:20px;padding:0 7px;border-radius:6px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:#4ade80;font-size:9px;font-weight:800;letter-spacing:.04em;cursor:pointer;font-family:var(--font,'DM Sans',sans-serif);transition:all .15s;white-space:nowrap;">
+      RESTAURAR
+    </button>`;
+
+  const btnIndividualHtml = `
+    <button type="button" class="btn-send-pausa-individual btn-send-individual-js" data-send-nome="${nomeSeguro}">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      Enviar pausa
+    </button>
+    <button type="button" class="btn-msg-rapida-js" title="Mensagem rápida via Discord" style="height:20px;padding:0 7px;border-radius:6px;border:1px solid rgba(88,101,242,0.3);background:rgba(88,101,242,0.08);color:#9ba3ff;font-size:9px;font-weight:800;letter-spacing:.04em;cursor:pointer;font-family:var(--font,'DM Sans',sans-serif);transition:all .15s;white-space:nowrap;">
+      💬 MSG
+    </button>`;
+
   const nomeCell = `
     <div class="pausa-nome">
-      <div class="avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(colab.nome)}</div>
+      <div class="avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(nome)}</div>
       <div>
-        <strong>${nomeSeguro}</strong>
-        <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <strong>${nomeSeguro}</strong>
+          ${activeChips}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
+          <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
+          ${btnIndividualHtml}
+          ${btnOcultarHtml}
+        </div>
+        ${atrasoFieldHtml}
       </div>
     </div>`;
 
+  // Campos de horário — SEM onclick inline: usamos data-campo e addEventListener
+  let fieldsHtml = "";
   if (isGestao) {
-    row.innerHTML = `
-      ${nomeCell}
+    fieldsHtml = `
       <div class="pausa-fields">
-        <div class="pausa-field">
-          <label>Entrada</label>
-          <input type="time" value="${p.entrada || ""}" onchange="setPausa(${nomeArg}, 'entrada', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Entrada</label>
+          <input type="time" class="pausa-time-input" data-campo="entrada" value="${p.entrada || ""}" /></div>
         <div class="pausa-divider">→</div>
-        <div class="pausa-field">
-          <label>Almoço</label>
-          <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa(${nomeArg}, 'pausa_20', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Almoço</label>
+          <input type="time" class="pausa-time-input" data-campo="pausa_20" value="${p.pausa_20 || ""}" /></div>
         <div class="pausa-pill-almoco">1h12</div>
         <div class="pausa-divider">→</div>
-        <div class="pausa-field">
-          <label>Saída</label>
-          <input type="time" value="${p.saida || ""}" onchange="setPausa(${nomeArg}, 'saida', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Saída</label>
+          <input type="time" class="pausa-time-input" data-campo="saida" value="${p.saida || ""}" /></div>
       </div>`;
   } else {
-    row.innerHTML = `
-      ${nomeCell}
+    fieldsHtml = `
       <div class="pausa-fields">
-        <div class="pausa-field">
-          <label>Entrada</label>
-          <input type="time" value="${p.entrada || ""}" onchange="setPausa(${nomeArg}, 'entrada', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Entrada</label>
+          <input type="time" class="pausa-time-input" data-campo="entrada" value="${p.entrada || ""}" /></div>
         <div class="pausa-divider">·</div>
-        <div class="pausa-field">
-          <label>Pausa 10</label>
-          <input type="time" value="${p.pausa_10_1 || ""}" onchange="setPausa(${nomeArg}, 'pausa_10_1', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Pausa 10</label>
+          <input type="time" class="pausa-time-input" data-campo="pausa_10_1" value="${p.pausa_10_1 || ""}" /></div>
         <div class="pausa-divider">·</div>
-        <div class="pausa-field">
-          <label>Pausa 20</label>
-          <input type="time" value="${p.pausa_20 || ""}" onchange="setPausa(${nomeArg}, 'pausa_20', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Pausa 20</label>
+          <input type="time" class="pausa-time-input" data-campo="pausa_20" value="${p.pausa_20 || ""}" /></div>
         <div class="pausa-divider">·</div>
-        <div class="pausa-field">
-          <label>Pausa 10</label>
-          <input type="time" value="${p.pausa_10_2 || ""}" onchange="setPausa(${nomeArg}, 'pausa_10_2', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Pausa 10</label>
+          <input type="time" class="pausa-time-input" data-campo="pausa_10_2" value="${p.pausa_10_2 || ""}" /></div>
         <div class="pausa-divider">→</div>
-        <div class="pausa-field">
-          <label>Saída</label>
-          <input type="time" value="${p.saida || ""}" onchange="setPausa(${nomeArg}, 'saida', this.value)" />
-        </div>
+        <div class="pausa-field"><label>Saída</label>
+          <input type="time" class="pausa-time-input" data-campo="saida" value="${p.saida || ""}" /></div>
       </div>`;
   }
 
+  row.innerHTML = `
+    <div class="pausa-row-top">
+      ${nomeCell}
+      ${f.chat ? "" : fieldsHtml}
+    </div>
+    <div class="pausa-flags">${flagBtnsHtml}</div>
+  `;
+
+  // ── Vincular eventos via addEventListener (sem onclick inline, sem problema de aspas) ──
+
+  // Botões de flag
+  row.querySelectorAll(".flag-btn[data-flag]").forEach(btn => {
+    btn.addEventListener("click", () => toggleFlag(nome, btn.dataset.flag));
+  });
+
+  // Inputs de horário
+  row.querySelectorAll(".pausa-time-input").forEach(input => {
+    input.addEventListener("change", () => setPausa(nome, input.dataset.campo, input.value));
+  });
+
+  // Input de minutos de atraso
+  const atrasoInput = row.querySelector(".atraso-min-input");
+  if (atrasoInput) {
+    atrasoInput.addEventListener("change", () => setAtrasoMin(nome, atrasoInput.value));
+  }
+
+  // Botão enviar pausa individual
+  const btnEnviar = row.querySelector(".btn-send-individual-js");
+  if (btnEnviar) {
+    btnEnviar.addEventListener("click", () => sendPausaIndividual(nome));
+  }
+
+  // Botão mensagem rápida Discord
+  const btnMsg = row.querySelector(".btn-msg-rapida-js");
+  if (btnMsg) {
+    btnMsg.addEventListener("click", () => abrirMensagemRapida(nome));
+  }
+
+  // Botão "Ocultar hoje" (ativa OFF sem modal)
+  const btnOcultar = row.querySelector(".btn-ocultar-js");
+  if (btnOcultar) {
+    btnOcultar.addEventListener("click", () => {
+      const fOcult = getFlagDefault(nome);
+      fOcult.off = true;
+      saveLocal();
+      saveFlag(nome);
+      renderPausas();
+      renderDash();
+      renderOffSugestoes();
+      toast(`${nome} ocultado(a) da escala. Flag OFF ativada.`);
+    });
+  }
+
+  // Botão "Restaurar" (desativa off/ferias/atestado rapidamente)
+  const btnRestore = row.querySelector(".btn-restaurar-js");
+  if (btnRestore) {
+    btnRestore.addEventListener("click", () => {
+      const fRes = getFlagDefault(nome);
+      fRes.off = false;
+      fRes.ferias = false;
+      fRes.atestado = false;
+      saveLocal();
+      saveFlag(nome);
+      renderPausas();
+      renderDash();
+      renderOffSugestoes();
+      toast(`${nome} restaurado(a) na escala.`);
+    });
+  }
+
   return row;
+}
+
+/** Renderiza o painel de ausencias ativas (OFF, Ferias, Atestado) acima dos cards. */
+function renderPainelAusencias() {
+  const container = document.getElementById("ausencias-painel-container");
+  if (!container) return;
+
+  const ausentes = colaboradores.filter(c => {
+    const f = getFlagDefault(c.nome);
+    return f.ferias || f.atestado || f.off;
+  });
+
+  if (!ausentes.length) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const cards = ausentes.map(c => {
+    const f = getFlagDefault(c.nome);
+    let tipo, cls, badge;
+    if (f.ferias)        { tipo = "ferias";   cls = "ac-ferias";   badge = "FERIAS"; }
+    else if (f.atestado) { tipo = "atestado"; cls = "ac-atestado"; badge = "ATESTADO"; }
+    else                 { tipo = "off";      cls = "ac-off";      badge = "OFF HOJE"; }
+
+    let sub = "";
+    if (tipo === "atestado" && atestados[c.nome]) {
+      sub = atestados[c.nome].dias + " dia(s) de atestado";
+    } else if (tipo === "ferias") {
+      sub = "Em ferias";
+    } else {
+      sub = "Fora da escala";
+    }
+
+    return `
+      <div class="ausencia-card ${cls}">
+        <div class="ausencia-avatar-ac">${initials(c.nome)}</div>
+        <div class="ausencia-info-ac">
+          <strong>${escapeHtml(c.nome)}</strong>
+          <small>${escapeHtml(sub)}</small>
+        </div>
+        <span class="ausencia-badge-ac">${badge}</span>
+      </div>`;
+  }).join("");
+
+  container.innerHTML = `<div class="ausencias-painel">${cards}</div>`;
 }
 
 /** Renderiza a lista de pausas separada por turno. */
@@ -498,29 +1655,60 @@ function renderPausas() {
   const container = $("pausas-body");
   container.innerHTML = "";
 
+  renderPainelAusencias();
+
   const grupos = [
-    { id: "manha", label: "Turno da manhã", hint: "Entradas antes de 12:00" },
-    { id: "tarde", label: "Turno da tarde", hint: "Entradas a partir de 12:00" },
+    { id: "manha", label: "Turno da manhã", hint: "Entradas antes de 10:00" },
+    { id: "tarde", label: "Turno da tarde", hint: "Entradas a partir de 10:00" },
   ];
 
   grupos.forEach((grupo) => {
-    const colabsTurno = colaboradores
-      .filter((colab) => getTurnoPausa(getPausaDefault(colab.nome).entrada) === grupo.id)
-      .sort((a, b) => {
-        const entradaA = getPausaDefault(a.nome).entrada || "99:99";
-        const entradaB = getPausaDefault(b.nome).entrada || "99:99";
-        return entradaA.localeCompare(entradaB) || a.nome.localeCompare(b.nome);
+    let colabsTurno = colaboradores
+      .filter((colab) => getTurnoPausa(getPausaDefault(colab.nome).entrada) === grupo.id);
+
+    // Filtro de colaborador específico
+    if (pausasFiltroColab) {
+      colabsTurno = colabsTurno.filter(c =>
+        c.nome.toLowerCase().includes(pausasFiltroColab.toLowerCase())
+      );
+    }
+
+    // Ocultar ausentes
+    if (pausasOcultarAusentes) {
+      colabsTurno = colabsTurno.filter(c => {
+        const f = getFlagDefault(c.nome);
+        return !f.off && !f.ferias && !f.atestado;
       });
+    }
+
+    // Ordenação
+    colabsTurno = sortColabsForPausas(colabsTurno);
 
     const section = document.createElement("section");
     section.className = "pausa-turno";
+
+    // Conta colaboradores ativos (excluindo OFF e Chat da contagem de escaláveis)
+    const ativos = colabsTurno.filter(c => {
+      const f = getFlagDefault(c.nome);
+      return !f.off && !f.ferias && !f.atestado;
+    });
+
+    const totalTurno = colabsTurno.length;
+    const ativosCount = ativos.length;
+    const ausentesCount = totalTurno - ativosCount;
+
     section.innerHTML = `
       <div class="pausa-turno-head">
         <div>
           <strong>${grupo.label}</strong>
           <small>${grupo.hint}</small>
         </div>
-        <span class="pausa-turno-count">${colabsTurno.length}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="pausas-counter-badge">
+            <strong>${ativosCount}</strong> de ${totalTurno} disponíveis
+            ${ausentesCount > 0 ? `<span style="color:var(--red);font-size:10px;">· ${ausentesCount} ausente${ausentesCount > 1 ? 's' : ''}</span>` : ''}
+          </span>
+        </div>
       </div>
       <div class="pausa-turno-list"></div>
     `;
@@ -533,6 +1721,121 @@ function renderPausas() {
     }
 
     container.appendChild(section);
+  });
+
+  renderOffSugestoes();
+  renderAtrasoAlertas();
+}
+
+/**
+ * Ordena colaboradores para a tela de pausas conforme configuração atual.
+ * @param {Array} colabs
+ * @returns {Array}
+ */
+function sortColabsForPausas(colabs) {
+  const { campo, direcao } = pausasOrdenacao;
+  const mult = direcao === "asc" ? 1 : -1;
+  return [...colabs].sort((a, b) => {
+    if (campo === "nome") {
+      return mult * a.nome.localeCompare(b.nome);
+    }
+    if (campo === "horario") {
+      const ea = getPausaDefault(a.nome).entrada || "99:99";
+      const eb = getPausaDefault(b.nome).entrada || "99:99";
+      return mult * (ea.localeCompare(eb) || a.nome.localeCompare(b.nome));
+    }
+    if (campo === "status") {
+      const prioridade = (nome) => {
+        const f = getFlagDefault(nome);
+        if (f.ferias)   return 5;
+        if (f.atestado) return 4;
+        if (f.off)      return 3;
+        if (f.atraso)   return 2;
+        if (f.rodizio)  return 1;
+        return 0;
+      };
+      return mult * (prioridade(b.nome) - prioridade(a.nome));
+    }
+    return 0;
+  });
+}
+
+function renderOffSugestoes() {
+  const container = $("off-sugestoes-container");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const colabsOff = colaboradores.filter(c => {
+    const f = getFlagDefault(c.nome);
+    return f.off && pausas[c.nome]?.entrada;
+  });
+
+  if (!colabsOff.length) return;
+
+  const disponiveis = colaboradores.filter(c => {
+    const f = getFlagDefault(c.nome);
+    return !f.off && !f.ferias && !f.atestado && pausas[c.nome]?.entrada;
+  });
+
+  colabsOff.forEach(offColab => {
+    const candidato = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+    const div = document.createElement("div");
+    div.className = "off-sugestao";
+    div.innerHTML = `
+      <div>
+        <strong>⛔ ${offColab.nome} está OFF</strong><br>
+        <span>Deseja adiantar a pausa de ${candidato ? escapeHtml(candidato.nome) : "outro colaborador"}?</span>
+      </div>
+      ${candidato ? `<button class="btn btn-small btn-gold" type="button" onclick="this.closest('.off-sugestao').remove()">Confirmar</button>` : ""}
+      <button class="btn btn-small" type="button" onclick="this.closest('.off-sugestao').remove()">Dispensar</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/** Renderiza alertas de reorganização de escala por atraso. */
+function renderAtrasoAlertas() {
+  const container = $("atraso-alertas-container");
+  if (!container) return;
+  container.innerHTML = "";
+
+  colaboradores.forEach(colab => {
+    const f = getFlagDefault(colab.nome);
+    if (!f.atraso) return;
+    const p = getPausaDefault(colab.nome);
+    if (!p.entrada) return;
+
+    const atrasoMin = f.atraso_min || 60;
+    const [hh, mm] = p.entrada.split(":").map(Number);
+    const entradaReal = hh * 60 + mm + atrasoMin;
+    const primeiraDisp = entradaReal + 60; // 1h de trabalho para 1ª pausa
+
+    const hDisp = String(Math.floor(primeiraDisp / 60)).padStart(2, "0");
+    const mDisp = String(primeiraDisp % 60).padStart(2, "0");
+
+    const div = document.createElement("div");
+    div.className = "atraso-alert";
+    const nomeEsc = colab.nome.replace(/'/g, "\\'");
+    const horarioAjustado = `${hDisp}:${mDisp}`;
+    div.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span><strong>${colab.nome}</strong> chegou com ${atrasoMin}min de atraso — 1ª pausa somente após <strong>${hDisp}:${mDisp}</strong>.</span>
+      <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;">
+        <button class="btn btn-small btn-gold" type="button" data-aplicar-atraso="${colab.nome}" data-horario="${horarioAjustado}">Aplicar ajuste</button>
+        <button class="btn btn-small" type="button" onclick="this.closest('.atraso-alert').remove()">Dispensar</button>
+      </div>
+    `;
+    div.querySelector('[data-aplicar-atraso]').addEventListener('click', function() {
+      const n = this.dataset.aplicarAtraso;
+      const h = this.dataset.horario;
+      if (!pausas[n]) pausas[n] = {};
+      pausas[n].pausa_10_1 = h;
+      saveLocal();
+      renderPausas();
+      toast(`Pausa de ${n} ajustada para ${h}.`);
+      this.closest('.atraso-alert').remove();
+    });
+    container.appendChild(div);
   });
 }
 
@@ -775,7 +2078,13 @@ function renderDash() {
   }
 
   const proximasPausas = colaboradores
-    .filter((c) => pausas[c.nome]?.entrada)
+    .filter((c) => {
+      if (!pausas[c.nome]?.entrada) return false;
+      // Exclui colaboradores com flags que os tiram da escala
+      const f = getFlagDefault(c.nome);
+      if (f.off || f.ferias || f.atestado || f.chat) return false;
+      return true;
+    })
     .map((c) => {
       const p = getPausaDefault(c.nome);
       const isGestao = c.cargo === "Gestão Pit Stop";
@@ -907,6 +2216,37 @@ function closeModal(id) {
  * Abre o modal de colaborador no modo edição.
  * @param {number} index
  */
+
+/**
+ * Confirma e exclui um colaborador.
+ * @param {number} index
+ */
+window.confirmarExclusaoColab = async (index) => {
+  const colab = colaboradores[index];
+  if (!colab) return;
+  if (!confirm(`Deseja realmente excluir ${colab.nome}? Esta ação não pode ser desfeita.`)) return;
+  
+  colaboradores.splice(index, 1);
+  delete pausas[colab.nome];
+  delete flags[colab.nome];
+  delete atestados[colab.nome];
+  delete horariosChegada[colab.nome];
+
+  try {
+    if (supa && colab.discord_id) {
+      await supa.from("colaboradores").delete().eq("discord_id", colab.discord_id);
+    } else if (supa && colab.nome) {
+      await supa.from("colaboradores").delete().eq("nome", colab.nome);
+    }
+  } catch (err) {
+    console.warn("[excluirColab] Erro no Supabase:", err);
+  }
+
+  saveLocal();
+  renderAll();
+  toast(`${colab.nome} foi excluído(a) da equipe.`);
+};
+
 window.openColab = (index) => {
   editingColabIndex = index;
   const colab = colaboradores[index];
@@ -1189,6 +2529,17 @@ async function saveFolga() {
     saveLocal();
     closeModal("modal-folga");
     renderAll();
+    // Marca botão de origem como "registrado"
+    const btnOrig = tipo === "ferias" ? document.getElementById("btn-add-ferias") : document.getElementById("btn-add-folga");
+    if (btnOrig) {
+      const _orig = btnOrig.innerHTML;
+      btnOrig.innerHTML = `✓ ${tipo === "ferias" ? "Férias registradas" : "Folga registrada"}`;
+      btnOrig.classList.add("btn-sent-success");
+      setTimeout(() => {
+        btnOrig.innerHTML = _orig;
+        btnOrig.classList.remove("btn-sent-success");
+      }, 4000);
+    }
     toast(tipo === "ferias" ? "Férias cadastradas." : "Folga cadastrada.");
   } catch (err) {
     console.error("[saveFolga]", err);
@@ -1443,6 +2794,8 @@ async function criarFeedbackPrivado() {
     if ($("feedback-mensagem"))      $("feedback-mensagem").value = "";
     if ($("feedback-colaborador"))   $("feedback-colaborador").value = "";
 
+    const btn = document.getElementById('btn-send-feedback');
+    confirmarEnvioBtn(btn, 'Feedback enviado');
     toast("Feedback privado enviado.");
   } catch (err) {
     console.error("[criarFeedbackPrivado]", err);
@@ -1544,6 +2897,8 @@ async function sendAviso() {
       console.warn("[Hermes] aviso salvo no portal, mas Discord falhou:", err);
     }
 
+    const btn = document.getElementById('btn-send-aviso');
+    confirmarEnvioBtn(btn, `${destinatarios.length} enviado(s)`);
     toast(`Aviso publicado para ${destinatarios.length} colaborador(es).`);
   } catch (err) {
     console.error("[sendAviso]", err);
@@ -1553,12 +2908,44 @@ async function sendAviso() {
 
 /** Envia as pausas do dia via Hermes para o Discord. */
 async function sendPausas() {
+  const btn = document.getElementById('btn-send-pausas');
+  marcarBotaoEnviado(btn, 'Enviando...', 'Discord ✓ Enviado');
   try {
     await sendHermes("pitstop-pausas", { pausas, colaboradores });
-    toast("Pausas enviadas.");
+    toast("Pausas enviadas no Discord.");
+    confirmarEnvioBtn(btn, '✓ Enviado');
   } catch (err) {
+    resetarBtn(btn, 'Enviar no Discord');
     toast("Erro: " + err.message);
   }
+}
+
+/** Marca um botão como "enviando" e depois "enviado". */
+function marcarBotaoEnviado(btn, textoEnviando, textoSucesso) {
+  if (!btn) return;
+  btn.disabled = true;
+  btn._textoOriginal = btn.innerHTML;
+  btn.innerHTML = textoEnviando;
+  btn.classList.add('btn-sending');
+}
+
+function confirmarEnvioBtn(btn, texto) {
+  if (!btn) return;
+  btn.classList.remove('btn-sending');
+  btn.classList.add('btn-sent-success');
+  btn.innerHTML = `✓ ${texto.replace('✓ ', '')}`;
+  setTimeout(() => {
+    btn.classList.remove('btn-sent-success');
+    btn.innerHTML = btn._textoOriginal || texto;
+    btn.disabled = false;
+  }, 6000);
+}
+
+function resetarBtn(btn, texto) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.classList.remove('btn-sending', 'btn-sent-success');
+  btn.innerHTML = btn._textoOriginal || texto;
 }
 
 /* ==========================================================================
@@ -1577,6 +2964,7 @@ async function boot() {
     }
 
     saveLocal();
+    verificarAtestadosVencidos();
     renderAll();
 
     setTimeout(() => {
@@ -1641,17 +3029,39 @@ $("btn-send-aviso").onclick     = sendAviso;
 if ($("btn-send-feedback")) $("btn-send-feedback").onclick = criarFeedbackPrivado;
 $("btn-send-pausas").onclick    = sendPausas;
 
+// Escala de sábado
+if ($("btn-add-sabado"))   $("btn-add-sabado").onclick   = newSabadoEntry;
+if ($("btn-save-sabado"))  $("btn-save-sabado").onclick  = saveSabadoEntry;
+if ($("btn-send-sabado"))  $("btn-send-sabado").onclick  = sendEscalaSabado;
+if ($("btn-clear-sabado")) $("btn-clear-sabado").onclick = clearEscalaSabado;
+
 toggleFolgaTipoFields();
 togglePendenciaCaso();
 
 // Inicia a aplicação
-boot();
+boot().then(() => {
+  iniciarControlesPausas();
+});
 
 // Atualiza o painel a cada 60 segundos
 setInterval(() => {
   renderMetrics();
   renderDash();
 }, 60000);
+
+// Auto-sincronização: recarrega dados do Supabase a cada 30s para refletir
+// mudanças feitas por outros usuários sem precisar apertar Sincronizar.
+if (supa) {
+  setInterval(async () => {
+    try {
+      await loadSupabase();
+      saveLocal();
+      renderAll();
+    } catch (err) {
+      console.warn("[auto-sync]", err);
+    }
+  }, 30000);
+}
 
 /* ==========================================================================
    15. Status do sistema
@@ -1753,3 +3163,176 @@ function popularSelectFeedback() {
 }
 
 window.popularSelectFeedback = popularSelectFeedback;
+
+/* ==========================================================================
+   17. Relógio ao vivo
+   ========================================================================== */
+
+function iniciarRelogioAoVivo() {
+  const el = $("relogio-ao-vivo");
+  if (!el) return;
+  function atualizar() {
+    const agora = new Date();
+    el.textContent = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }
+  atualizar();
+  setInterval(atualizar, 1000);
+}
+iniciarRelogioAoVivo();
+
+/* ==========================================================================
+   18. Controles de ordenação, filtro e ocultar ausentes (Pausas)
+   ========================================================================== */
+
+function iniciarControlesPausas() {
+  // Ordenação por status/horário/nome
+  document.querySelectorAll(".pausas-sort-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const campo = btn.dataset.sort;
+      if (pausasOrdenacao.campo === campo) {
+        pausasOrdenacao.direcao = pausasOrdenacao.direcao === "asc" ? "desc" : "asc";
+      } else {
+        pausasOrdenacao.campo = campo;
+        pausasOrdenacao.direcao = "asc";
+      }
+      document.querySelectorAll(".pausas-sort-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderPausas();
+    });
+  });
+
+  // Ocultar ausentes
+  const btnOcultar = $("btn-ocultar-ausentes");
+  if (btnOcultar) {
+    btnOcultar.addEventListener("click", () => {
+      pausasOcultarAusentes = !pausasOcultarAusentes;
+      btnOcultar.classList.toggle("active", pausasOcultarAusentes);
+      btnOcultar.textContent = pausasOcultarAusentes ? "👁 Mostrar ausentes" : "🚫 Ocultar ausentes";
+      renderPausas();
+    });
+  }
+
+  // Filtro por colaborador específico
+  const filtroInput = $("pausas-filtro-colab");
+  if (filtroInput) {
+    filtroInput.addEventListener("input", () => {
+      pausasFiltroColab = filtroInput.value.trim();
+      renderPausas();
+    });
+
+    // Preencher datalist
+    const dl = $("pausas-filtro-datalist");
+    if (dl) {
+      colaboradores.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.nome;
+        dl.appendChild(opt);
+      });
+    }
+  }
+
+  // Botão limpar filtro
+  const btnLimparFiltro = $("btn-limpar-filtro-colab");
+  if (btnLimparFiltro) {
+    btnLimparFiltro.addEventListener("click", () => {
+      pausasFiltroColab = "";
+      if (filtroInput) filtroInput.value = "";
+      renderPausas();
+    });
+  }
+}
+
+// Inicializa controles após o boot
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(iniciarControlesPausas, 500);
+});
+/* ==========================================================================
+   19. Mensagem rápida via Discord por colaborador
+   ========================================================================== */
+
+/**
+ * Abre o modal de mensagem rápida para um colaborador específico.
+ * @param {string} nome
+ */
+window.abrirMensagemRapida = function(nome) {
+  garantirModalMensagemRapida();
+  const modal = $("modal-mensagem-rapida");
+  $("mensagem-rapida-nome").textContent = nome;
+  $("mensagem-rapida-colab").value = nome;
+  $("mensagem-rapida-texto").value = "";
+  modal.classList.add("open");
+};
+
+function garantirModalMensagemRapida() {
+  if ($("modal-mensagem-rapida")) return;
+  const div = document.createElement("div");
+  div.className = "modal-overlay";
+  div.id = "modal-mensagem-rapida";
+  div.setAttribute("role", "dialog");
+  div.setAttribute("aria-modal", "true");
+  div.innerHTML = `
+    <div class="modal modal-atraso-inner" style="gap:0;padding:0;overflow:hidden;max-width:500px;">
+      <div class="modal-folga-header">
+        <div class="modal-folga-icon" style="background:rgba(88,101,242,0.12);color:#9ba3ff;border-color:rgba(88,101,242,0.25);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 style="font-size:18px;margin:0;">Mensagem rápida</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">Para: <strong id="mensagem-rapida-nome"></strong></p>
+        </div>
+        <button type="button" id="btn-close-mensagem-rapida" aria-label="Fechar" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+        <input type="hidden" id="mensagem-rapida-colab" />
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Mensagem</label>
+          <textarea id="mensagem-rapida-texto" rows="4" placeholder="Digite a mensagem a enviar via Discord DM..." style="background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${[
+            "Sua pausa está chegando! ⏰",
+            "Por favor, confirme sua disponibilidade.",
+            "Retorne ao atendimento assim que possível.",
+            "Temos uma reunião agora. Por favor, entre.",
+          ].map(t => `<button type="button" class="btn btn-small btn-msg-rapida-sugestao" style="font-size:11px;height:28px;border-radius:8px;" data-texto="${t}">${t}</button>`).join("")}
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px 20px;border-top:1px solid var(--border);">
+        <button class="btn" type="button" id="btn-cancel-mensagem-rapida">Cancelar</button>
+        <button class="btn btn-discord" type="button" id="btn-confirm-mensagem-rapida" style="height:40px;padding:0 20px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+          Enviar no Discord
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.addEventListener("click", e => { if (e.target === div) div.classList.remove("open"); });
+  $("btn-close-mensagem-rapida").onclick  = () => div.classList.remove("open");
+  $("btn-cancel-mensagem-rapida").onclick = () => div.classList.remove("open");
+
+  // Sugestões de texto
+  div.querySelectorAll(".btn-msg-rapida-sugestao").forEach(btn => {
+    btn.addEventListener("click", () => {
+      $("mensagem-rapida-texto").value = btn.dataset.texto;
+    });
+  });
+
+  // Enviar
+  $("btn-confirm-mensagem-rapida").onclick = async () => {
+    const nome    = $("mensagem-rapida-colab").value;
+    const texto   = $("mensagem-rapida-texto").value.trim();
+    const colab   = colaboradores.find(c => c.nome === nome);
+    if (!texto) { toast("Digite a mensagem."); return; }
+    if (!colab?.discord_id) { toast("Colaborador sem Discord ID configurado."); return; }
+    try {
+      await sendHermes("pitstop-mensagem", { discord_id: colab.discord_id, nome, mensagem: texto });
+      toast(`Mensagem enviada para ${nome} no Discord.`);
+      div.classList.remove("open");
+    } catch (err) {
+      toast("Erro ao enviar: " + err.message);
+    }
+  };
+}

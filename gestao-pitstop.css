@@ -538,17 +538,25 @@ h2 {
 
 .pausa-row {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 12px 16px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, opacity 0.2s;
+  margin-bottom: 0;
 }
 
 .pausa-row:hover {
   border-color: rgba(255,255,255,0.14);
+}
+
+.pausa-row-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .pausa-nome {
@@ -2493,3 +2501,1061 @@ input[type="number"] {
 }
 
 .form-card h2{margin-bottom:8px}.form-card + .form-card{margin-top:16px}
+
+/* ==========================================================================
+   FLAGS DE STATUS — Férias, Atestado, OFF, Saída antecipada, Atraso, Rodízio, Chat
+   ========================================================================== */
+
+/* Container de flags na linha de pausa */
+.pausa-flags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* Botão de flag (toggle) */
+.flag-btn {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: "DM Sans", sans-serif;
+}
+
+.flag-btn:hover {
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text);
+  background: var(--surface2);
+}
+
+/* Flags ativas */
+.flag-btn.flag-on-ferias    { background: rgba(34,197,94,0.14);  color: #4ade80; border-color: rgba(34,197,94,0.3); }
+.flag-btn.flag-on-atestado  { background: rgba(251,113,133,0.14);color: var(--red); border-color: rgba(251,113,133,0.3); }
+.flag-btn.flag-on-off       { background: rgba(148,163,184,0.14);color: #94a3b8; border-color: rgba(148,163,184,0.3); }
+.flag-btn.flag-on-saida-ant { background: rgba(251,191,36,0.14); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+.flag-btn.flag-on-atraso    { background: rgba(239,68,68,0.14);  color: #f87171; border-color: rgba(239,68,68,0.3); }
+.flag-btn.flag-on-rodizio   { background: rgba(139,92,246,0.14); color: #a78bfa; border-color: rgba(139,92,246,0.3); }
+.flag-btn.flag-on-chat      { background: rgba(59,130,246,0.14); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+
+/* Linha OFF: campos de horário ficam opacos */
+.pausa-row.flag-off .pausa-fields input[type="time"] {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Linha Chat: campo de pausas fica oculto */
+.pausa-row.flag-chat .pausa-fields {
+  display: none;
+}
+
+/* Chip de flag na linha do colaborador */
+.flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  border: 1px solid transparent;
+}
+
+.flag-chip.chip-ferias    { background: rgba(34,197,94,0.12);  color: #4ade80; border-color: rgba(34,197,94,0.25); }
+.flag-chip.chip-atestado  { background: rgba(251,113,133,0.12);color: var(--red); border-color: rgba(251,113,133,0.25); }
+.flag-chip.chip-off       { background: rgba(148,163,184,0.12);color: #94a3b8; border-color: rgba(148,163,184,0.25); }
+.flag-chip.chip-saida-ant { background: rgba(251,191,36,0.12); color: #fbbf24; border-color: rgba(251,191,36,0.25); }
+.flag-chip.chip-atraso    { background: rgba(239,68,68,0.12);  color: #f87171; border-color: rgba(239,68,68,0.25); }
+.flag-chip.chip-rodizio   { background: rgba(139,92,246,0.12); color: #a78bfa; border-color: rgba(139,92,246,0.25); }
+.flag-chip.chip-chat      { background: rgba(59,130,246,0.12); color: #60a5fa; border-color: rgba(59,130,246,0.25); }
+
+/* Banner de alerta de atraso */
+.atraso-alert {
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #f87171;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* Sugestão OFF */
+.off-sugestao {
+  background: rgba(148,163,184,0.06);
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  animation: slideDown 0.2s ease;
+}
+
+.off-sugestao strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.off-sugestao .btn-small {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   ESCALA DE SÁBADO
+   ========================================================================== */
+
+.sabado-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sabado-head-info strong {
+  font-family: "Syne", sans-serif;
+  font-size: 15px;
+  display: block;
+}
+
+.sabado-head-info small {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+  display: block;
+}
+
+.sabado-head-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sabado-list {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sabado-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: border-color 0.15s;
+}
+
+.sabado-row:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.sabado-row .pausa-nome {
+  flex: 0 0 160px;
+}
+
+.sabado-row .pausa-fields {
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.sabado-row .btn-remove {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(251,113,133,0.08);
+  border: 1px solid rgba(251,113,133,0.15);
+  color: var(--red);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.sabado-row .btn-remove:hover {
+  background: rgba(251,113,133,0.18);
+}
+
+.sabado-vazio {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sabado-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  background: rgba(245,200,66,0.1);
+  color: var(--gold);
+  border: 1px solid rgba(245,200,66,0.25);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* Seção de escala sábado dentro da aba Pausas */
+.sabado-card {
+  margin-top: 24px;
+}
+
+.sabado-card .sabado-inner {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.018);
+}
+
+/* ==========================================================================
+   PAUSA ROW — Melhorias visuais (complementares)
+   ========================================================================== */
+
+.pausa-row .pausa-nome {
+  flex: 0 0 auto;
+  min-width: 140px;
+}
+
+.pausa-row .pausa-fields {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Linha de flag do atraso — campo de minutos */
+.atraso-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.atraso-field input[type="number"] {
+  width: 60px;
+  height: 28px;
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* Botão enviar pausa individual via Discord */
+.btn-send-pausa-individual {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: rgba(88,101,242,0.12);
+  border: 1px solid rgba(88,101,242,0.25);
+  color: #9ba3ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s;
+  font-family: "DM Sans", sans-serif;
+  white-space: nowrap;
+}
+
+.btn-send-pausa-individual:hover {
+  background: rgba(88,101,242,0.22);
+}
+
+/* Indicador de turno — selecionar turno para envio */
+.pausa-turno-selector {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+
+/* ==========================================================================
+   BOTÕES — Estados de feedback (enviado, enviando)
+   ========================================================================== */
+
+/* Estado "enviando" */
+.btn-sending {
+  opacity: 0.7;
+  cursor: wait !important;
+  pointer-events: none;
+}
+
+/* Estado "enviado com sucesso" */
+.btn-sent-success {
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+  pointer-events: none;
+  transition: all 0.25s ease !important;
+}
+
+/* Estado "enviado" do botão individual de pausa */
+.btn-send-pausa-individual.btn-sent {
+  background: rgba(34, 197, 94, 0.14) !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #4ade80 !important;
+  pointer-events: none;
+}
+
+/* Botão gold "enviado" */
+.btn-gold.btn-sent-success {
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+}
+
+/* Discord button "enviado" */
+.btn-discord.btn-sent-success {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+  color: #4ade80 !important;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.15) !important;
+}
+
+/* ==========================================================================
+   PAUSAS — Redesign melhorado da aba Pausas
+   ========================================================================== */
+
+/* Divisor de turno mais destacado */
+.pausa-turno {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.015);
+}
+
+.pausa-turno-head {
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+}
+
+.pausa-turno-list {
+  padding: 10px;
+}
+
+.pausa-row {
+  border-radius: 12px;
+}
+
+/* Flag buttons - melhorar espaçamento */
+.pausa-flags {
+  padding: 4px 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+/* ==========================================================================
+   EQUIPE — Botão de exclusão
+   ========================================================================== */
+
+.btn-delete-colab:hover {
+  background: rgba(251,113,133,0.18) !important;
+  border-color: rgba(251,113,133,0.4) !important;
+}
+
+/* ==========================================================================
+   MODAIS: ATRASO e ATESTADO
+   ========================================================================== */
+
+.modal-atraso-inner,
+.modal-atestado-inner {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  max-width: 460px;
+}
+
+/* ==========================================================================
+   DASHBOARD — Proximas pausas melhoradas
+   ========================================================================== */
+
+.dash-pausa-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s;
+}
+
+.dash-pausa-item:hover {
+  border-color: rgba(255,255,255,0.14);
+}
+
+.dash-pausa-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dash-pausa-next-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.dash-pausa-next-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.dash-pausa-next-time {
+  font-family: "Syne", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.dash-pausa-next-diff {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dash-pausa-slots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dash-pausa-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dash-pausa-slot--next {
+  background: rgba(245, 200, 66, 0.1);
+  border-color: rgba(245, 200, 66, 0.3);
+  color: var(--gold);
+}
+
+.dash-pausa-slot-label {
+  white-space: nowrap;
+}
+
+.dash-pausa-slot-time {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aniversários no dash */
+.dash-bday-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+
+.dash-bday-item:last-child {
+  border-bottom: none;
+}
+
+.dash-bday-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(245, 200, 66, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   MELHORIAS VISUAIS — FLAGS AGRUPADAS POR CATEGORIA + BORDA LATERAL
+   ========================================================================== */
+
+/* --- Borda lateral esquerda colorida no card de pausa --- */
+.pausa-row {
+  border-left: 3px solid transparent;
+  transition: border-color 0.18s, border-left-color 0.18s, background 0.18s, opacity 0.2s;
+}
+
+.pausa-row.status-ferias   { border-left-color: #4ade80; }
+.pausa-row.status-atestado { border-left-color: var(--red); }
+.pausa-row.status-off      { border-left-color: #64748b; }
+.pausa-row.status-atraso   { border-left-color: #f87171; }
+.pausa-row.status-saida-ant{ border-left-color: #fbbf24; }
+.pausa-row.status-rodizio  { border-left-color: #a78bfa; }
+.pausa-row.status-chat     { border-left-color: #60a5fa; }
+
+/* --- Flags agrupadas por categoria --- */
+.pausa-flags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* Grupo de flags */
+.flag-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+/* Separador vertical entre grupos */
+.flag-group-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0 3px;
+}
+
+/* Label da categoria (AUSÊNCIA / TURNO / ESCALA) */
+.flag-cat-label {
+  font-size: 8.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  opacity: 0.6;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* --- Botões de flag — redesign por categoria --- */
+/* Ausências (Férias, Atestado, OFF) */
+.flag-btn[data-flag="ferias"],
+.flag-btn[data-flag="atestado"],
+.flag-btn[data-flag="off"] {
+  border-radius: 8px;
+}
+
+/* Turno (S.Antecipada, Atraso) */
+.flag-btn[data-flag="saida_ant"],
+.flag-btn[data-flag="atraso"] {
+  border-radius: 8px;
+}
+
+/* Escala (Rodízio, Chat) */
+.flag-btn[data-flag="rodizio"],
+.flag-btn[data-flag="chat"] {
+  border-radius: 8px;
+}
+
+/* Tamanho ligeiramente maior para melhor toque */
+.flag-btn {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 10px;
+  gap: 5px;
+}
+
+/* Hover mais destacado */
+.flag-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Ativo — efeito de glow sutil por cor */
+.flag-btn.flag-on-ferias    { box-shadow: 0 0 0 1px rgba(74,222,128,0.2),  0 2px 6px rgba(34,197,94,0.15); }
+.flag-btn.flag-on-atestado  { box-shadow: 0 0 0 1px rgba(251,113,133,0.2), 0 2px 6px rgba(251,113,133,0.15); }
+.flag-btn.flag-on-off       { box-shadow: 0 0 0 1px rgba(100,116,139,0.2), 0 2px 6px rgba(100,116,139,0.12); }
+.flag-btn.flag-on-saida-ant { box-shadow: 0 0 0 1px rgba(251,191,36,0.2),  0 2px 6px rgba(251,191,36,0.15); }
+.flag-btn.flag-on-atraso    { box-shadow: 0 0 0 1px rgba(239,68,68,0.2),   0 2px 6px rgba(239,68,68,0.15); }
+.flag-btn.flag-on-rodizio   { box-shadow: 0 0 0 1px rgba(139,92,246,0.2),  0 2px 6px rgba(139,92,246,0.15); }
+.flag-btn.flag-on-chat      { box-shadow: 0 0 0 1px rgba(59,130,246,0.2),  0 2px 6px rgba(59,130,246,0.15); }
+
+/* --- Painel de ausências ativas no topo da seção de Pausas --- */
+.ausencias-painel {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  animation: slideDown 0.22s ease;
+}
+
+.ausencia-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid;
+  padding: 10px 14px;
+  min-width: 170px;
+  flex: 1;
+  max-width: 240px;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.ausencia-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  border-radius: 14px 0 0 14px;
+}
+
+/* Cores por tipo */
+.ausencia-card.ac-ferias   { background: rgba(34,197,94,0.07);  border-color: rgba(34,197,94,0.25); }
+.ausencia-card.ac-ferias::before   { background: #4ade80; }
+
+.ausencia-card.ac-atestado { background: rgba(251,113,133,0.07); border-color: rgba(251,113,133,0.25); }
+.ausencia-card.ac-atestado::before { background: var(--red); }
+
+.ausencia-card.ac-off      { background: rgba(100,116,139,0.07); border-color: rgba(100,116,139,0.25); }
+.ausencia-card.ac-off::before      { background: #64748b; }
+
+.ausencia-avatar-ac {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.ac-ferias   .ausencia-avatar-ac { background: rgba(34,197,94,0.18);  color: #4ade80; }
+.ac-atestado .ausencia-avatar-ac { background: rgba(251,113,133,0.18); color: var(--red); }
+.ac-off      .ausencia-avatar-ac { background: rgba(100,116,139,0.18); color: #94a3b8; }
+
+.ausencia-info-ac {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ausencia-info-ac strong {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ausencia-info-ac small {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.ausencia-badge-ac {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.ac-ferias   .ausencia-badge-ac { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.ac-atestado .ausencia-badge-ac { background: rgba(251,113,133,0.15); color: var(--red); border: 1px solid rgba(251,113,133,0.3); }
+.ac-off      .ausencia-badge-ac { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+
+/* Header da seção de pausas com contador */
+.pausas-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pausas-counter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pausas-counter-badge strong {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+/* Ordenação */
+.btn-sort {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s;
+  font-family: "DM Sans", sans-serif;
+  white-space: nowrap;
+}
+
+.btn-sort:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+.btn-sort.active {
+  background: rgba(245,200,66,0.1);
+  border-color: rgba(245,200,66,0.3);
+  color: var(--gold);
+}
+
+/* Chip de flag com ícone mais visível (tamanho maior) */
+.flag-chip {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 9.5px;
+  gap: 5px;
+}
+
+/* Pausa row OFF — fundo levemente cinza */
+.pausa-row.flag-off {
+  background: rgba(100,116,139,0.05);
+}
+
+/* Pausa row ferias — fundo levemente verde */
+.pausa-row.status-ferias {
+  background: rgba(34,197,94,0.03);
+}
+
+/* Pausa row atestado */
+.pausa-row.status-atestado {
+  background: rgba(251,113,133,0.04);
+}
+
+
+/* ==========================================================================
+   NOVOS ESTILOS — Relógio ao vivo, Indicadores, Barra de Ocupação, Toolbar
+   ========================================================================== */
+
+/* --- Relógio ao vivo --- */
+.relogio-ao-vivo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 4px;
+  padding: 8px 12px;
+  background: rgba(245,200,66,0.06);
+  border: 1px solid rgba(245,200,66,0.15);
+  border-radius: 10px;
+}
+
+.relogio-label {
+  font-size: 14px;
+}
+
+.relogio-ao-vivo {
+  font-family: "Syne", monospace, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Painel de Indicadores Gerenciais --- */
+.indicadores-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) 2fr;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .indicadores-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.indicador-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  position: relative;
+  overflow: hidden;
+}
+
+.ind-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.ind-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ind-body strong {
+  font-family: "Syne", sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ind-body span {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ind-green strong { color: #4ade80; }
+.ind-red strong   { color: var(--red); }
+.ind-yellow strong { color: var(--gold); }
+.ind-blue strong  { color: #9ba3ff; }
+.ind-purple { flex-direction: column; align-items: flex-start; gap: 8px; }
+.ind-purple .ind-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.ind-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+/* --- Barra de Ocupação do Turno --- */
+.ocupacao-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ocupacao-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ocupacao-percent {
+  font-family: "Syne", sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.ocupacao-bar-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ocupacao-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.ocupacao-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --- Toolbar de Pausas (Ordenação + Filtro + Ocultar ausentes) --- */
+.pausas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 16px;
+}
+
+.pausas-toolbar-left,
+.pausas-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pausas-toolbar-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pausas-sort-btn {
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.pausas-sort-btn.active {
+  background: rgba(245,200,66,0.12) !important;
+  border-color: rgba(245,200,66,0.35) !important;
+  color: var(--gold) !important;
+}
+
+.pausas-filtro-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 30px;
+}
+
+.pausas-filtro-wrap svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.pausas-filtro-wrap input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  width: 160px;
+  padding: 0;
+}
+
+.pausas-filtro-clear {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.pausas-filtro-clear:hover {
+  color: var(--text);
+}
+
+#btn-ocultar-ausentes {
+  height: 30px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 700;
+}
+
+#btn-ocultar-ausentes.active {
+  background: rgba(251,113,133,0.12) !important;
+  border-color: rgba(251,113,133,0.35) !important;
+  color: var(--red) !important;
+}
+
+/* Botão btn-small para toolbar */
+.btn-small {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+

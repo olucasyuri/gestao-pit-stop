@@ -115,6 +115,10 @@
                 <small id="status-descricao">Todos os serviços ativos.</small>
               </div>
             </div>
+            <div class="relogio-ao-vivo-wrap">
+              <span class="relogio-label">⏱</span>
+              <span id="relogio-ao-vivo" class="relogio-ao-vivo">--:--:--</span>
+            </div>
             <p class="status-time" id="status-time">Última atualização: agora</p>
           </div>
         </div>
@@ -125,6 +129,12 @@
           <div class="metric m-green"><span>Gestão</span><strong id="metric-gestao">0</strong></div>
           <div class="metric m-muted"><span>Ausências futuras</span><strong id="metric-folgas">0</strong></div>
         </div>
+
+        <!-- Painel de Indicadores Gerenciais -->
+        <div id="painel-indicadores" style="margin-bottom:18px;"></div>
+
+        <!-- Barra de Ocupação do Turno -->
+        <div class="card" id="barra-ocupacao" style="margin-bottom:18px;padding:16px 22px;"></div>
 
         <div class="grid2">
           <div class="card">
@@ -159,7 +169,7 @@
             <p class="eyebrow">Operação diária</p>
             <h1>Controle de pausas</h1>
             <p class="muted">
-              Campos editáveis. Ao salvar, fica persistido no Supabase;
+              Campos editáveis. Flags de status por colaborador. Ao salvar, fica persistido no Supabase;
               em modo local, fica salvo no navegador.
             </p>
           </div>
@@ -169,8 +179,60 @@
             <button class="btn btn-discord" id="btn-send-pausas" type="button">Enviar no Discord</button>
           </div>
         </div>
+
+        <!-- Painel de ausências ativas -->
+        <div id="ausencias-painel-container"></div>
+
+        <!-- Sugestões de OFF ativas -->
+        <div id="off-sugestoes-container"></div>
+
+        <!-- Alertas de atraso de escala -->
+        <div id="atraso-alertas-container"></div>
+
+        <!-- Barra de ferramentas da escala -->
+        <div class="pausas-toolbar">
+          <div class="pausas-toolbar-left">
+            <span class="pausas-toolbar-label">Ordenar:</span>
+            <button class="btn btn-small pausas-sort-btn active" data-sort="horario" type="button">⏱ Horário</button>
+            <button class="btn btn-small pausas-sort-btn" data-sort="nome" type="button">🔤 Nome</button>
+            <button class="btn btn-small pausas-sort-btn" data-sort="status" type="button">🚦 Status</button>
+          </div>
+          <div class="pausas-toolbar-right">
+            <div class="pausas-filtro-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input type="text" id="pausas-filtro-colab" list="pausas-filtro-datalist" placeholder="Filtrar colaborador..." autocomplete="off" />
+              <datalist id="pausas-filtro-datalist"></datalist>
+              <button id="btn-limpar-filtro-colab" type="button" title="Limpar filtro" class="pausas-filtro-clear">✕</button>
+            </div>
+            <button class="btn btn-small" id="btn-ocultar-ausentes" type="button">🚫 Ocultar ausentes</button>
+          </div>
+        </div>
+
         <div class="card pausas-wrap">
           <div id="pausas-body"></div>
+        </div>
+
+        <!-- Escala de sábado -->
+        <div class="card sabado-card">
+          <div class="sabado-inner">
+            <div class="sabado-head">
+              <div class="sabado-head-info">
+                <strong>
+                  <span class="sabado-badge">⚡ Sábado</span>
+                  &nbsp; Escala do sábado
+                </strong>
+                <small>Escala temporária — pode ser excluída ao final do dia. Não afeta a escala principal.</small>
+              </div>
+              <div class="sabado-head-actions">
+                <button class="btn" id="btn-add-sabado" type="button">+ Adicionar</button>
+                <button class="btn btn-discord" id="btn-send-sabado" type="button">Enviar no Discord</button>
+                <button class="btn" id="btn-clear-sabado" type="button" style="color:var(--red);border-color:rgba(251,113,133,0.2)">Limpar escala</button>
+              </div>
+            </div>
+            <div class="sabado-list" id="sabado-list">
+              <div class="sabado-vazio">Nenhuma escala de sábado cadastrada. Clique em "+ Adicionar" para começar.</div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -466,6 +528,114 @@
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
             </svg>
             <span id="btn-save-folga-label">Salvar folga</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: ESCALA SÁBADO ===== -->
+    <div class="modal-overlay" id="modal-sabado" role="dialog" aria-modal="true" aria-labelledby="modal-sabado-title">
+      <div class="modal">
+        <h2 id="modal-sabado-title">Adicionar à escala de sábado</h2>
+
+        <label for="sabado-colab">Colaborador</label>
+        <select id="sabado-colab">
+          <option value="">Selecionar colaborador...</option>
+        </select>
+
+        <label for="sabado-entrada">Entrada</label>
+        <input id="sabado-entrada" type="time" />
+
+        <label for="sabado-pausa10_1">1ª Pausa 10</label>
+        <input id="sabado-pausa10_1" type="time" />
+
+        <label for="sabado-pausa20">Pausa 20</label>
+        <input id="sabado-pausa20" type="time" />
+
+        <label for="sabado-pausa10_2">2ª Pausa 10</label>
+        <input id="sabado-pausa10_2" type="time" />
+
+        <label for="sabado-saida">Saída</label>
+        <input id="sabado-saida" type="time" />
+
+        <div class="modal-actions">
+          <button class="btn" type="button" data-close="modal-sabado">Cancelar</button>
+          <button class="btn btn-gold" type="button" id="btn-save-sabado">Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ===== MODAL: ATRASO ===== -->
+    <div class="modal-overlay" id="modal-atraso" role="dialog" aria-modal="true" aria-labelledby="modal-atraso-title">
+      <div class="modal modal-atraso-inner">
+        <div class="modal-folga-header">
+          <div class="modal-folga-icon" style="background:rgba(239,68,68,0.12);color:#f87171;border-color:rgba(239,68,68,0.25);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+            </svg>
+          </div>
+          <div>
+            <h2 id="modal-atraso-title">Registrar atraso</h2>
+            <p class="modal-folga-sub">Colaborador: <strong id="modal-atraso-nome"></strong></p>
+          </div>
+          <button class="modal-close-btn" type="button" data-close="modal-atraso" aria-label="Fechar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-folga-body">
+          <div class="modal-field">
+            <label for="atraso-horario-chegada">Horário real de chegada</label>
+            <input id="atraso-horario-chegada" type="time" />
+            <small id="atraso-entrada-info" style="color:var(--muted);font-size:12px;margin-top:4px;display:block;"></small>
+          </div>
+          <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:#f87171;">
+            ⏰ A 1ª pausa será calculada automaticamente como <strong>1 hora após a chegada real</strong> e o Discord será notificado.
+          </div>
+        </div>
+        <div class="modal-actions" style="padding:16px 24px 20px;border-top:1px solid var(--border);margin:0;">
+          <button class="btn" type="button" data-close="modal-atraso">Cancelar</button>
+          <button class="btn" id="btn-confirm-atraso" type="button" style="background:rgba(239,68,68,0.14);border-color:rgba(239,68,68,0.35);color:#f87171;">
+            Confirmar atraso
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL: ATESTADO ===== -->
+    <div class="modal-overlay" id="modal-atestado" role="dialog" aria-modal="true" aria-labelledby="modal-atestado-title">
+      <div class="modal modal-atestado-inner">
+        <div class="modal-folga-header">
+          <div class="modal-folga-icon" style="background:rgba(251,113,133,0.12);color:var(--red);border-color:rgba(251,113,133,0.25);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M12 14v4M10 16h4"/>
+            </svg>
+          </div>
+          <div>
+            <h2 id="modal-atestado-title">Registrar atestado</h2>
+            <p class="modal-folga-sub">Colaborador: <strong id="modal-atestado-nome"></strong></p>
+          </div>
+          <button class="modal-close-btn" type="button" data-close="modal-atestado" aria-label="Fechar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-folga-body">
+          <div class="modal-field">
+            <label for="atestado-dias">Quantos dias de atestado?</label>
+            <input id="atestado-dias" type="number" min="1" max="365" placeholder="Ex: 3" />
+          </div>
+          <div style="background:rgba(251,113,133,0.06);border:1px solid rgba(251,113,133,0.15);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--red);">
+            🏥 O colaborador <strong>não aparecerá nas próximas pausas</strong> e voltará automaticamente após o período informado.
+          </div>
+        </div>
+        <div class="modal-actions" style="padding:16px 24px 20px;border-top:1px solid var(--border);margin:0;">
+          <button class="btn" type="button" data-close="modal-atestado">Cancelar</button>
+          <button class="btn" id="btn-confirm-atestado" type="button" style="background:rgba(251,113,133,0.14);border-color:rgba(251,113,133,0.35);color:var(--red);">
+            Confirmar atestado
           </button>
         </div>
       </div>
