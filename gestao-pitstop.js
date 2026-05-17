@@ -112,6 +112,13 @@ let atestados = {};
 let horariosChegada = {};
 
 /**
+ * Status de confirmação das pausas do dia por colaborador.
+ * Valores: "pendente" | "confirmada" | "atrasada" | "ausente"
+ * @type {Record<string, { pausa_10_1: string, pausa_20: string, pausa_10_2: string, obs: string }>}
+ */
+let pausaStatusHoje = {};
+
+/**
  * Estado de ordenação das pausas.
  * @type {{ campo: "status" | "horario" | "nome", direcao: "asc" | "desc" }}
  */
@@ -443,6 +450,29 @@ async function loadSupabase() {
       pausa_10_2: row.pausa_10_2 ?? "",
       saida:      row.saida      ?? "",
     }));
+  }
+
+  // Status de pausas do dia — erro não-crítico
+  try {
+    const { data: dataPausaStatus, error: errPausaStatus } = await supa
+      .from("pitstop_pausa_status")
+      .select("*")
+      .eq("data", todayISO());
+    if (errPausaStatus) {
+      console.warn("[Supabase] Tabela pitstop_pausa_status não encontrada — execute o SQL de criação.", errPausaStatus);
+    } else {
+      pausaStatusHoje = {};
+      (dataPausaStatus ?? []).forEach(row => {
+        pausaStatusHoje[row.colaborador_nome] = {
+          pausa_10_1: row.pausa_10_1 ?? "pendente",
+          pausa_20:   row.pausa_20   ?? "pendente",
+          pausa_10_2: row.pausa_10_2 ?? "pendente",
+          obs:        row.obs        ?? "",
+        };
+      });
+    }
+  } catch (err) {
+    console.warn("[Supabase] Erro ao carregar pitstop_pausa_status:", err);
   }
 
   return true;
@@ -2114,7 +2144,8 @@ function renderDash() {
     .slice(0, 5);
 
   if (proximasPausas.length) {
-    $("dash-pausas").innerHTML = proximasPausas.map(({ c, p, isGestao, proxSlot }) => {
+    $("dash-pausas").innerHTML = `<div style="display:flex;flex-direction:column;gap:0;">` +
+      proximasPausas.map(({ c, p, isGestao, proxSlot }) => {
       const diffMin = toMin(proxSlot.time) - agoraMin;
       const diffText = diffMin <= 0 ? "Agora"
         : diffMin < 60 ? `em ${diffMin}min`
@@ -2131,12 +2162,9 @@ function renderDash() {
             { key: "pausa_10_2", label: "2ª Pausa 10", icon: "☕", time: p.pausa_10_2, isNext: proxSlot.time === p.pausa_10_2 },
           ];
 
-      const pausaBlocos = pausaSlots.filter(s => s.time).map(s => `
-        <div class="dash-pausa-slot ${s.isNext ? "dash-pausa-slot--next" : ""}">
-          <span class="dash-pausa-slot-label">${s.icon} ${s.label}</span>
-          <span class="dash-pausa-slot-time">${s.time}</span>
-        </div>
-      `).join("");
+      const pausaBlocos = pausaSlots.filter(s => s.time)
+        .map(s => buildPausaSlotHtml(s, c.nome))
+        .join("");
 
       return `
         <div class="dash-pausa-item">
@@ -2160,7 +2188,7 @@ function renderDash() {
           </div>
           <div class="dash-pausa-slots">${pausaBlocos}</div>
         </div>`;
-    }).join("");
+    }).join("") + `</div>`;
   } else {
     const comPausa = colaboradores.filter((c) => pausas[c.nome]?.entrada).slice(0, 5);
     if (comPausa.length) {
@@ -3350,3 +3378,348 @@ function garantirModalMensagemRapida() {
     }
   };
 }
+
+/* ==========================================================================
+   20. Confirmação de pausas — status em tempo real
+   ========================================================================== */
+
+/**
+ * Retorna o status de uma pausa específica de um colaborador.
+ * @param {string} nome
+ * @param {string} campo
+ * @returns {"pendente"|"confirmada"|"atrasada"|"ausente"}
+ */
+function getPausaStatus(nome, campo) {
+  return pausaStatusHoje[nome]?.[campo] ?? "pendente";
+}
+
+/**
+ * Persiste o status de uma pausa no Supabase e atualiza o estado local imediatamente.
+ * @param {string} nome        - Nome do colaborador
+ * @param {string} campo       - "pausa_10_1" | "pausa_20" | "pausa_10_2"
+ * @param {string} novoStatus  - "pendente" | "confirmada" | "atrasada" | "ausente"
+ * @param {string} [obs]       - Observação opcional
+ */
+async function setPausaStatus(nome, campo, novoStatus, obs = "") {
+  // Atualiza estado local imediatamente para resposta rápida
+  if (!pausaStatusHoje[nome]) {
+    pausaStatusHoje[nome] = { pausa_10_1: "pendente", pausa_20: "pendente", pausa_10_2: "pendente", obs: "" };
+  }
+  pausaStatusHoje[nome][campo] = novoStatus;
+  if (obs) pausaStatusHoje[nome].obs = obs;
+
+  renderDash();
+  renderPausas();
+
+  // Persiste no Supabase
+  if (!supa) return;
+  try {
+    const row = {
+      colaborador_nome: nome,
+      data:             todayISO(),
+      pausa_10_1:       pausaStatusHoje[nome].pausa_10_1,
+      pausa_20:         pausaStatusHoje[nome].pausa_20,
+      pausa_10_2:       pausaStatusHoje[nome].pausa_10_2,
+      obs:              pausaStatusHoje[nome].obs,
+      atualizado_em:    new Date().toISOString(),
+    };
+    const { error } = await supa
+      .from("pitstop_pausa_status")
+      .upsert(row, { onConflict: "colaborador_nome,data" });
+    if (error) console.warn("[setPausaStatus]", error);
+  } catch (err) {
+    console.warn("[setPausaStatus] exception:", err);
+  }
+}
+
+/**
+ * Constrói o HTML de um slot de pausa com botões de confirmação de status.
+ * @param {{ key: string, label: string, icon: string, time: string, isNext: boolean }} slot
+ * @param {string} nome - Nome do colaborador
+ * @returns {string}
+ */
+function buildPausaSlotHtml(slot, nome) {
+  const status = getPausaStatus(nome, slot.key);
+  const nomeEsc = escapeHtml(nome);
+
+  const statusMap = {
+    pendente:   { cls: "",             badge: "" },
+    confirmada: { cls: "ps-confirmada", badge: "✅ saiu" },
+    atrasada:   { cls: "ps-atrasada",   badge: "🔴 ATRASADO" },
+    ausente:    { cls: "ps-ausente",    badge: "⛔ ausente" },
+  };
+  const st = statusMap[status] || statusMap.pendente;
+
+  const nextPendente = slot.isNext && status === "pendente";
+  const slotClass = [
+    "dash-pausa-slot",
+    slot.isNext ? "dash-pausa-slot--next" : "",
+    st.cls,
+    nextPendente ? "ps-pendente-next" : "",
+  ].filter(Boolean).join(" ");
+
+  const btnsHtml = `
+    <div class="ps-action-row">
+      <button class="ps-btn ps-btn-ok"
+        title="Confirmar: ${escapeHtml(slot.label)} saiu"
+        data-ps-nome="${nomeEsc}" data-ps-campo="${slot.key}" data-ps-status="confirmada">✔ saiu</button>
+      <button class="ps-btn ps-btn-late"
+        title="Marcar como atrasado"
+        data-ps-nome="${nomeEsc}" data-ps-campo="${slot.key}" data-ps-status="atrasada">⏱ atrasou</button>
+      <button class="ps-btn ps-btn-absent"
+        title="Marcar como ausente"
+        data-ps-nome="${nomeEsc}" data-ps-campo="${slot.key}" data-ps-status="ausente">✕</button>
+    </div>`;
+
+  return `
+    <div class="${slotClass}" data-ps-campo="${slot.key}" data-ps-nome="${nomeEsc}">
+      <div class="ps-slot-top">
+        <span class="dash-pausa-slot-label">${slot.icon} ${slot.label}</span>
+        ${st.badge ? `<span class="ps-status-label">${st.badge}</span>` : ""}
+      </div>
+      <span class="dash-pausa-slot-time">${slot.time}</span>
+      ${btnsHtml}
+    </div>`;
+}
+
+// Delegação global de eventos para botões de status de pausa
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-ps-nome][data-ps-campo][data-ps-status]");
+  if (!btn) return;
+  e.stopPropagation();
+
+  const nome   = btn.dataset.psNome;
+  const campo  = btn.dataset.psCampo;
+  const status = btn.dataset.psStatus;
+
+  if (status === "confirmada") {
+    await setPausaStatus(nome, campo, "confirmada");
+    toast(`✅ ${nome} — pausa confirmada.`);
+    return;
+  }
+  if (status === "ausente") {
+    await setPausaStatus(nome, campo, "ausente");
+    toast(`⛔ ${nome} — ausente nesta pausa.`);
+    return;
+  }
+  if (status === "atrasada") {
+    abrirModalPausaAtrasada(nome, campo);
+    return;
+  }
+  if (status === "pendente") {
+    await setPausaStatus(nome, campo, "pendente", "");
+    toast(`🔘 ${nome} — status resetado.`);
+  }
+});
+
+/** Abre o modal para registrar atraso de pausa. */
+function abrirModalPausaAtrasada(nome, campo) {
+  garantirModalPausaAtrasada();
+  const modal = document.getElementById("modal-ps-atrasado");
+  document.getElementById("ps-atrasado-nome").textContent = nome;
+  document.getElementById("ps-atrasado-campo").value      = campo;
+  document.getElementById("ps-atrasado-colab").value      = nome;
+  document.getElementById("ps-atrasado-obs").value        = "";
+  document.getElementById("ps-atrasado-min").value        = "10";
+
+  const p = getPausaDefault(nome);
+  document.getElementById("ps-atrasado-horario").textContent = p[campo] || "--:--";
+
+  modal.classList.add("open");
+}
+
+/** Cria o modal de atraso de pausa dinamicamente (apenas uma vez). */
+function garantirModalPausaAtrasada() {
+  if (document.getElementById("modal-ps-atrasado")) return;
+  const div = document.createElement("div");
+  div.className = "modal-overlay";
+  div.id = "modal-ps-atrasado";
+  div.setAttribute("role", "dialog");
+  div.setAttribute("aria-modal", "true");
+  div.innerHTML = `
+    <div class="modal modal-atraso-inner" style="gap:0;padding:0;overflow:hidden;max-width:480px;">
+      <div class="modal-folga-header">
+        <div class="modal-folga-icon" style="background:rgba(239,68,68,0.12);color:#f87171;border-color:rgba(239,68,68,0.25);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+          </svg>
+        </div>
+        <div>
+          <h2 style="font-size:18px;margin:0;">Pausa atrasada</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">
+            Colaborador: <strong id="ps-atrasado-nome"></strong>
+            &nbsp;·&nbsp; Previsto: <strong id="ps-atrasado-horario"></strong>
+          </p>
+        </div>
+        <button type="button" id="btn-close-ps-atrasado" aria-label="Fechar"
+          style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:30px;height:30px;
+                 border-radius:8px;border:1px solid var(--border);background:var(--surface2);
+                 color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</button>
+      </div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+        <input type="hidden" id="ps-atrasado-colab" />
+        <input type="hidden" id="ps-atrasado-campo" />
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Minutos de atraso</label>
+          <select id="ps-atrasado-min"
+            style="background:var(--surface3);border:1px solid var(--border);border-radius:10px;
+                   padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;">
+            <option value="5">5 min</option>
+            <option value="10" selected>10 min</option>
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">1 hora</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);">Observação (opcional)</label>
+          <input id="ps-atrasado-obs" type="text" placeholder="Ex: estava em atendimento, sistema travou..."
+            style="background:var(--surface3);border:1px solid var(--border);border-radius:10px;
+                   padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;" />
+        </div>
+        <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);
+                    border-radius:10px;padding:10px 14px;font-size:12px;color:#f87171;line-height:1.5;">
+          🔴 O card vai subir para o topo e ficar em destaque vermelho pulsante para quem estiver de plantão tomar providência.
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px 20px;border-top:1px solid var(--border);">
+        <button class="btn" type="button" id="btn-cancel-ps-atrasado">Cancelar</button>
+        <button class="btn" type="button" id="btn-confirm-ps-atrasado"
+          style="background:rgba(239,68,68,0.14);border-color:rgba(239,68,68,0.35);color:#f87171;">
+          ⏱ Confirmar atraso
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+
+  div.addEventListener("click", (e) => { if (e.target === div) div.classList.remove("open"); });
+  document.getElementById("btn-close-ps-atrasado").onclick  = () => div.classList.remove("open");
+  document.getElementById("btn-cancel-ps-atrasado").onclick = () => div.classList.remove("open");
+
+  document.getElementById("btn-confirm-ps-atrasado").onclick = async () => {
+    const nome  = document.getElementById("ps-atrasado-colab").value;
+    const campo = document.getElementById("ps-atrasado-campo").value;
+    const min   = parseInt(document.getElementById("ps-atrasado-min").value, 10) || 10;
+    const obs   = document.getElementById("ps-atrasado-obs").value.trim();
+
+    // Ajusta o horário da pausa somando os minutos de atraso
+    const p = getPausaDefault(nome);
+    const horarioAtual = p[campo];
+    if (horarioAtual) {
+      const novoHorario = addMinutes(horarioAtual, min);
+      if (!pausas[nome]) pausas[nome] = {};
+      pausas[nome][campo] = novoHorario;
+      saveLocal();
+      if (supa) {
+        await supa.from("pausas").upsert(
+          { ...getPausaDefault(nome), colaborador_nome: nome, [campo]: novoHorario },
+          { onConflict: "colaborador_nome" }
+        ).catch(err => console.warn("[ps-atrasado upsert pausas]", err));
+      }
+    }
+
+    const obsCompleta = obs ? `Atrasado ${min}min — ${obs}` : `Atrasado ${min}min`;
+    await setPausaStatus(nome, campo, "atrasada", obsCompleta);
+
+    div.classList.remove("open");
+    toast(`⏱ ${nome} atrasado ${min}min. Pausa ajustada e card em destaque.`);
+  };
+}
+
+// Injeta CSS de status de pausas dinamicamente
+(function injetarCSSPausaStatus() {
+  if (document.getElementById("css-pausa-status")) return;
+  const style = document.createElement("style");
+  style.id = "css-pausa-status";
+  style.textContent = `
+    .ps-action-row {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+    .ps-btn {
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .ps-btn:hover { opacity: .8; transform: scale(1.05); }
+    .ps-btn-ok {
+      background: rgba(74,222,128,.12);
+      border-color: rgba(74,222,128,.3);
+      color: #4ade80;
+    }
+    .ps-btn-late {
+      background: rgba(239,68,68,.12);
+      border-color: rgba(239,68,68,.3);
+      color: #f87171;
+    }
+    .ps-btn-absent {
+      background: rgba(148,163,184,.1);
+      border-color: rgba(148,163,184,.25);
+      color: #94a3b8;
+    }
+    .ps-slot-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .ps-status-label {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    /* Confirmado */
+    .dash-pausa-slot.ps-confirmada {
+      background: rgba(74,222,128,.08) !important;
+      border-color: rgba(74,222,128,.3) !important;
+    }
+    .ps-confirmada .ps-status-label { color: #4ade80; }
+    .ps-confirmada .dash-pausa-slot-time { color: #4ade80; }
+    /* Atrasado — sobe com borda pulsante vermelha */
+    .dash-pausa-slot.ps-atrasada {
+      background: rgba(239,68,68,.10) !important;
+      border: 1.5px solid rgba(239,68,68,.55) !important;
+      animation: ps-pulse-red 1.4s ease-in-out infinite;
+      order: -99;
+    }
+    .ps-atrasada .ps-status-label { color: #f87171; }
+    .ps-atrasada .dash-pausa-slot-time { color: #f87171; }
+    @keyframes ps-pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+      50%       { box-shadow: 0 0 0 5px rgba(239,68,68,.18); }
+    }
+    /* Ausente */
+    .dash-pausa-slot.ps-ausente {
+      opacity: .5;
+      background: rgba(148,163,184,.06) !important;
+    }
+    .ps-ausente .ps-status-label { color: #94a3b8; }
+    /* Próximo pendente */
+    .dash-pausa-slot.ps-pendente-next {
+      border-color: rgba(255,193,7,.5) !important;
+    }
+    /* Card inteiro com pausa atrasada sobe para o topo */
+    .dash-pausa-item:has(.ps-atrasada) {
+      order: -99;
+      border-left: 3px solid #f87171 !important;
+      border-radius: 12px;
+    }
+  `;
+  document.head.appendChild(style);
+})();
