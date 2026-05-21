@@ -6,10 +6,11 @@
     <title>Gestão PIT STOP</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="gestao-pitstop.css" />
+    <link rel="stylesheet" href="gestao-pev.css" />
   </head>
   <body>
 
@@ -77,14 +78,24 @@
             Aniversários
           </button>
 
+          <button class="tab tab-pev" data-tab="pev" role="tab" aria-selected="false">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            PEV
+            <span class="tab-badge-new">NOVO</span>
+          </button>
+
         </div>
 
-        <button class="pill" id="btn-sync" type="button">
-          <svg class="sync-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-          </svg>
-          Sincronizar
-        </button>
+        <div class="nav-actions">
+          <button class="pill" id="btn-sync" type="button">
+            <svg class="sync-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+            </svg>
+            Sincronizar
+          </button>
+        </div>
 
       </div>
     </nav>
@@ -388,6 +399,168 @@
 
       </section>
 
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- PEV — Setor Novo                                 -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <section class="page" id="page-pev" role="tabpanel">
+
+        <!-- Header PEV -->
+        <div class="pev-hero">
+          <div class="pev-hero-inner">
+            <p class="eyebrow">Setor</p>
+            <h1>Gestão <span class="pev-accent">PEV</span></h1>
+            <p class="muted">Escala, almoço, equipe e importações via Discord Bot.</p>
+          </div>
+          <button class="btn btn-discord pev-discord-config-btn" id="pev-discord-config-btn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+            Configurar Discord
+          </button>
+        </div>
+
+        <!-- Sub-abas PEV -->
+        <div class="pev-tabs">
+          <button class="pev-tab active" data-pev-tab="escala" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Escala
+          </button>
+          <button class="pev-tab" data-pev-tab="almoco" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            Almoço
+          </button>
+          <button class="pev-tab" data-pev-tab="equipe" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+            Equipe
+          </button>
+          <button class="pev-tab pev-tab-discord-import" data-pev-tab="importacoes" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+            Importações Discord
+            <span class="pev-import-count" id="pev-import-count" style="display:none">0</span>
+          </button>
+        </div>
+
+        <!-- PEV: ESCALA -->
+        <div class="pev-page active" id="pev-page-escala">
+          <div class="pev-date-bar">
+            <div class="pev-date-display" id="pev-escala-date-display">Carregando...</div>
+            <input type="date" id="pev-date-input" class="pev-date-input">
+          </div>
+          <!-- Dashboard rápido — 4 células -->
+          <div class="pev-dashboard-strip" id="pev-escala-dash">
+            <div class="pev-dash-cell d-int"><span class="pev-dash-num">0</span><span class="pev-dash-lbl">🏢 Internos</span></div>
+            <div class="pev-dash-cell d-ext"><span class="pev-dash-num">0</span><span class="pev-dash-lbl">🚗 Externos</span></div>
+            <div class="pev-dash-cell d-off"><span class="pev-dash-num">0</span><span class="pev-dash-lbl">✕ OFF</span></div>
+            <div class="pev-dash-cell d-aus"><span class="pev-dash-num">0</span><span class="pev-dash-lbl">📅 Ausentes</span></div>
+          </div>
+          <div class="pev-progress-card">
+            <div class="pev-progress-header">
+              <span class="pev-progress-title">Progresso da Escala</span>
+              <span class="pev-progress-count" id="pev-progress-count"><strong>0</strong> / 0</span>
+            </div>
+            <div class="pev-progress-track"><div class="pev-progress-fill" id="pev-progress-fill" style="width:0%"></div></div>
+            <div class="pev-stats-row" id="pev-escala-stats"></div>
+          </div>
+          <div class="card">
+            <div id="pev-escala-list"></div>
+          </div>
+          <div class="card" style="margin-top:1rem">
+            <h2>Mensagem gerada</h2>
+            <div class="pev-output-box" id="pev-escala-output"><em>Configure a escala acima para gerar a mensagem...</em></div>
+            <div class="pev-action-row">
+              <button class="btn btn-gold" id="pev-btn-copy-escala" type="button">📋 Copiar</button>
+              <button class="btn btn-discord" id="pev-btn-send-escala" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                Enviar Escala
+              </button>
+              <button class="btn" id="pev-btn-clear-escala" type="button" style="color:var(--red)">✕ Limpar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PEV: ALMOÇO -->
+        <div class="pev-page" id="pev-page-almoco">
+          <div class="pev-date-bar">
+            <div class="pev-date-display" id="pev-almoco-date-display">Carregando...</div>
+          </div>
+          <div class="card">
+            <h2>Controle de horários de almoço</h2>
+            <p style="font-size:13px;color:var(--muted);margin:8px 0 1rem">Ajuste o horário e marque ✓ quando o colaborador sair para o almoço.</p>
+            <div id="pev-almoco-list"></div>
+          </div>
+          <div class="card" style="margin-top:1rem">
+            <h2>Mensagem de almoço</h2>
+            <div class="pev-output-box" id="pev-almoco-output"><em>Marque os almoços acima para gerar a mensagem...</em></div>
+            <div class="pev-action-row">
+              <button class="btn btn-gold" id="pev-btn-copy-almoco" type="button">📋 Copiar</button>
+              <button class="btn btn-discord" id="pev-btn-send-almoco" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                Enviar Almoço
+              </button>
+              <button class="btn" id="pev-btn-update-almoco" type="button" style="color:var(--green)">↺ Atualizar</button>
+              <button class="btn" id="pev-btn-clear-almoco" type="button" style="color:var(--red)">✕ Limpar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PEV: EQUIPE -->
+        <div class="pev-page" id="pev-page-equipe">
+          <div class="card">
+            <h2>Colaboradores PEV</h2>
+            <p style="font-size:13px;color:var(--muted);margin:8px 0 1rem">Adicione, edite ou remova colaboradores. As alterações refletem em Escala e Almoço.</p>
+            <div id="pev-team-list"></div>
+            <div class="pev-action-row" style="margin-top:1rem">
+              <button class="btn btn-gold" id="pev-btn-add-colab" type="button">+ Adicionar colaborador</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PEV: IMPORTAÇÕES DISCORD -->
+        <div class="pev-page" id="pev-page-importacoes">
+
+          <!-- Header -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:1.25rem">
+            <div>
+              <div class="pev-import-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--discord)"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                Importações Discord
+              </div>
+              <div class="pev-import-subtitle">Registros enviados pelo bot via <strong>/importação de dados</strong></div>
+            </div>
+            <button class="btn btn-gold" id="pev-btn-add-import" type="button">+ Adicionar</button>
+          </div>
+
+          <!-- Stats -->
+          <div class="pev-import-stats" id="pev-import-stats"></div>
+
+          <!-- Toolbar -->
+          <div class="pev-import-toolbar">
+            <div></div>
+            <div class="pev-import-toolbar-right">
+              <div class="pev-search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input id="pev-import-search" class="pev-search-input" type="text" placeholder="Empresa ou CNPJ...">
+              </div>
+              <select id="pev-import-filter" class="pev-filter-select">
+                <option value="">Todos os registros</option>
+                <option value="sim">Com importação</option>
+                <option value="nao">Sem importação</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="card" style="padding:0;overflow:hidden">
+            <div id="pev-import-list" style="padding:0.75rem">
+              <div class="pev-import-empty" id="pev-import-empty">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p>Nenhum registro ainda.<br><small>Os dados chegam quando um colaborador usa <strong>/importação de dados</strong> no Discord.</small></p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
     </main>
 
     <!-- ===== MODAL: COLABORADOR ===== -->
@@ -669,9 +842,92 @@
       </div>
     </div>
 
+    <!-- ===== MODAL PEV: COLABORADOR ===== -->
+    <div class="modal-overlay" id="pev-modal-colab" role="dialog" aria-modal="true">
+      <div class="modal">
+        <h2 id="pev-colab-modal-title">Adicionar Colaborador PEV</h2>
+        <label for="pev-colab-nome">Nome</label>
+        <input class="pev-input" id="pev-colab-nome" type="text" placeholder="Ex: João Silva" autocomplete="off">
+        <div class="grid2-mini">
+          <div>
+            <label for="pev-colab-horario">Horário</label>
+            <input class="pev-input" id="pev-colab-horario" type="text" placeholder="Ex: 08h - 18h" autocomplete="off">
+          </div>
+          <div>
+            <label for="pev-colab-almoco">Almoço padrão</label>
+            <input class="pev-input" id="pev-colab-almoco" type="time" value="12:00">
+          </div>
+        </div>
+        <label for="pev-colab-regiao">Região</label>
+        <input class="pev-input" id="pev-colab-regiao" type="text" placeholder="Ex: Aracaju" autocomplete="off">
+        <div class="modal-actions">
+          <button class="btn" type="button" data-close="pev-modal-colab">Cancelar</button>
+          <button class="btn btn-gold" id="pev-btn-save-colab" type="button">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL PEV: DISCORD CONFIG ===== -->
+    <div class="modal-overlay" id="pev-modal-discord" role="dialog" aria-modal="true">
+      <div class="modal" style="max-width:500px">
+        <h2 style="display:flex;align-items:center;gap:10px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#5865f2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          Discord PEV — Configuração
+        </h2>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Configure os webhooks do Discord para o setor PEV.</p>
+        <label for="pev-webhook-escala">Webhook — Escala</label>
+        <input class="pev-input" id="pev-webhook-escala" type="text" placeholder="https://discord.com/api/webhooks/..." autocomplete="off">
+        <label for="pev-webhook-almoco">Webhook — Almoço</label>
+        <input class="pev-input" id="pev-webhook-almoco" type="text" placeholder="https://discord.com/api/webhooks/..." autocomplete="off">
+        <label for="pev-webhook-botname">Nome do bot</label>
+        <input class="pev-input" id="pev-webhook-botname" type="text" placeholder="Hermes PEV" value="Hermes PEV" autocomplete="off">
+        <div id="pev-discord-test-result" style="display:none;margin-top:0.5rem;padding:8px 12px;border-radius:8px;font-size:12px"></div>
+        <div class="modal-actions" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <button class="btn" id="pev-btn-test-discord" type="button" style="color:#5865f2;border-color:rgba(88,101,242,0.3);background:rgba(88,101,242,0.08)">⚡ Testar</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn" type="button" data-close="pev-modal-discord">Cancelar</button>
+            <button class="btn btn-discord" id="pev-btn-save-discord" type="button">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MODAL PEV: IMPORTAÇÃO (adicionar/editar manual) ===== -->
+    <div class="modal-overlay" id="pev-modal-importacao" role="dialog" aria-modal="true">
+      <div class="modal">
+        <h2 id="pev-import-modal-title">Nova Importação</h2>
+        <input type="hidden" id="pev-import-editing-id">
+        <label for="pev-import-empresa">Nome da empresa *</label>
+        <input class="pev-input" id="pev-import-empresa" type="text" placeholder="Ex: Empresa ABC Ltda" autocomplete="off">
+        <label for="pev-import-cnpj">CNPJ *</label>
+        <input class="pev-input" id="pev-import-cnpj" type="text" placeholder="00.000.000/0001-00" autocomplete="off" maxlength="18">
+        <label>Vai ter importação de dados?</label>
+        <div class="pev-radio-group">
+          <label class="pev-radio-label">
+            <input type="radio" name="pev-import-radio" value="sim" id="pev-import-radio-sim">
+            <span class="pev-radio-dot pev-radio-sim"></span> Sim
+          </label>
+          <label class="pev-radio-label">
+            <input type="radio" name="pev-import-radio" value="nao" id="pev-import-radio-nao" checked>
+            <span class="pev-radio-dot pev-radio-nao"></span> Não
+          </label>
+        </div>
+        <label for="pev-import-data-virada">Data da Virada do Sistema *</label>
+        <input class="pev-input" id="pev-import-data-virada" type="date" autocomplete="off">
+        <label for="pev-import-obs">Observação (opcional)</label>
+        <input class="pev-input" id="pev-import-obs" type="text" placeholder="Informações adicionais...">
+        <div class="modal-actions">
+          <button class="btn" type="button" data-close="pev-modal-importacao">Cancelar</button>
+          <button class="btn btn-gold" id="pev-btn-save-importacao" type="button">Salvar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== SCRIPTS ===== -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="gestao-pitstop.js"></script>
+    <script src="gestao-pev.js"></script>
+    <script src="gestao-pev-importacoes.js"></script>
 
     <!-- Dropdown customizado de colaboradores no modal de folga -->
     <script>
@@ -1031,6 +1287,32 @@
         viewMonth = now.getMonth();
         close();
       }));
+    })();
+    </script>
+
+    <!-- Sector hero switcher — esconde banner do setor não ativo -->
+    <script>
+    (function() {
+      // References to the two hero sections
+      const pitHero = document.querySelector('#page-dashboard .hero');
+      const pevHero = document.querySelector('#page-pev .pev-hero');
+
+      function updateSectorHeroes(activeTab) {
+        const isPEV = activeTab === 'pev';
+        if (pitHero) pitHero.classList.toggle('sector-hidden', isPEV);
+        if (pevHero) pevHero.classList.toggle('sector-hidden', !isPEV);
+      }
+
+      // Observe tab changes — hook into existing tab buttons
+      document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Small delay to let the page switch happen first
+          requestAnimationFrame(() => updateSectorHeroes(btn.dataset.tab));
+        });
+      });
+
+      // Initial state — dashboard is active by default
+      updateSectorHeroes('dashboard');
     })();
     </script>
   </body>

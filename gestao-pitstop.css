@@ -3559,3 +3559,360 @@ input[type="number"] {
   font-size: 12px;
 }
 
+
+/* ==========================================================================
+   PEV — Setor Novo (estilos integrados)
+   ========================================================================== */
+
+/* Tab PEV destacada */
+.tab-pev {
+  position: relative;
+  border: 1px solid rgba(88, 101, 242, 0.35) !important;
+  background: rgba(88, 101, 242, 0.08) !important;
+  color: #7984f5 !important;
+}
+.tab-pev.active {
+  background: rgba(88, 101, 242, 0.22) !important;
+  border-color: rgba(88, 101, 242, 0.6) !important;
+  color: #a5acff !important;
+}
+.tab-badge-new {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: #5865f2;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  line-height: 1.4;
+}
+
+/* PEV Hero */
+.pev-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.pev-hero-inner h1 { font-family: "Syne", sans-serif; font-size: clamp(24px, 5vw, 36px); font-weight: 800; }
+.pev-accent { color: #7984f5; }
+
+/* Sub-abas PEV */
+.pev-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.pev-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+}
+.pev-tab:hover { background: var(--surface2); color: var(--text); }
+.pev-tab.active { background: var(--surface2); border-color: var(--border); color: var(--text); }
+.pev-tab-discord-import.active { color: #7984f5; border-color: rgba(88,101,242,.3); }
+.pev-import-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #5865f2;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Páginas internas PEV */
+.pev-page { display: none; }
+.pev-page.active { display: block; }
+
+/* Date bar PEV */
+.pev-date-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.pev-date-display {
+  font-family: "Syne", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+.pev-date-display span { color: var(--gold); }
+.pev-date-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* Progress bar PEV */
+.pev-progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.pev-progress-title { font-size: 13px; font-weight: 600; }
+.pev-progress-count { font-size: 13px; color: var(--muted); }
+.pev-progress-track { height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+.pev-progress-fill { height: 100%; background: linear-gradient(90deg, #5865f2, #7984f5); border-radius: 3px; transition: width .3s; }
+.pev-stats-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+
+/* Output box PEV */
+.pev-output-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  min-height: 80px;
+  color: var(--text);
+  font-family: "DM Sans", sans-serif;
+  margin-bottom: 12px;
+}
+
+/* Action row PEV */
+.pev-action-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* PEV input */
+.pev-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s;
+  margin-bottom: 12px;
+}
+.pev-input:focus { border-color: rgba(88,101,242,.5); }
+
+/* Escala list PEV */
+.pev-colab-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pev-colab-row:last-child { border-bottom: none; }
+.pev-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.pev-colab-info { flex: 1; min-width: 100px; }
+.pev-colab-name { font-weight: 600; font-size: 13px; }
+.pev-colab-sub { font-size: 11px; color: var(--muted); }
+.pev-status-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pev-status-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+}
+.pev-status-btn:hover { opacity: .8; }
+.pev-status-btn.active-presente { background: rgba(74,222,128,.12); border-color: rgba(74,222,128,.3); color: #4ade80; }
+.pev-status-btn.active-falta { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); color: #f87171; }
+.pev-status-btn.active-folga { background: rgba(245,200,66,.1); border-color: rgba(245,200,66,.3); color: var(--gold); }
+.pev-status-btn.active-ferias { background: rgba(96,165,250,.1); border-color: rgba(96,165,250,.3); color: #60a5fa; }
+.pev-status-btn.active-meio { background: rgba(251,146,60,.1); border-color: rgba(251,146,60,.3); color: #fb923c; }
+
+/* Almoço list PEV */
+.pev-almoco-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pev-almoco-row:last-child { border-bottom: none; }
+.pev-almoco-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+.pev-almoco-check.done { background: rgba(74,222,128,.15); border-color: rgba(74,222,128,.4); }
+.pev-almoco-time {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  width: 80px;
+}
+
+/* Equipe PEV */
+.pev-team-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.pev-team-row:last-child { border-bottom: none; }
+.pev-team-actions { display: flex; gap: 6px; margin-left: auto; }
+.pev-btn-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: inherit;
+}
+.pev-btn-icon:hover { color: var(--text); background: var(--surface3); }
+.pev-btn-icon.delete:hover { color: var(--red); border-color: rgba(251,113,133,.3); }
+
+/* Importações */
+.pev-import-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  transition: border-color .15s;
+}
+.pev-import-card:hover { border-color: rgba(88,101,242,.25); }
+.pev-import-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pev-import-badge.sim { background: rgba(74,222,128,.12); color: #4ade80; border: 1px solid rgba(74,222,128,.25); }
+.pev-import-badge.nao { background: rgba(148,163,184,.1); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+.pev-import-empresa { font-weight: 700; font-size: 14px; }
+.pev-import-cnpj { font-size: 12px; color: var(--muted); font-family: monospace; }
+.pev-import-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.pev-import-actions { display: flex; gap: 6px; margin-left: auto; }
+.pev-import-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 20px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+/* Legend */
+.pev-import-legend { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.pev-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.pev-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pev-dot-sim { background: #4ade80; }
+.pev-dot-nao { background: #94a3b8; }
+
+/* Endpoint box */
+.pev-endpoint-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.pev-endpoint-box code { flex: 1; font-family: monospace; color: #7984f5; }
+
+/* Code inline */
+.pev-code {
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--surface2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+/* Radio group */
+.pev-radio-group { display: flex; gap: 16px; margin-bottom: 12px; }
+.pev-radio-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+.pev-radio-label input { display: none; }
+.pev-radio-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); transition: all .15s; }
+.pev-radio-label input:checked + .pev-radio-sim { background: #4ade80; border-color: #4ade80; }
+.pev-radio-label input:checked + .pev-radio-nao { background: #94a3b8; border-color: #94a3b8; }
+
+/* Discord config btn */
+.pev-discord-config-btn { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+}
+
+/* Btn discord */
+.btn-discord {
+  background: rgba(88,101,242,0.14);
+  border: 1px solid rgba(88,101,242,0.35);
+  color: #7984f5;
+}
+.btn-discord:hover { background: rgba(88,101,242,0.24); }
+

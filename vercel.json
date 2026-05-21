@@ -1,1 +1,8 @@
-{"version":2,"rewrites":[{"source":"/api/(.*)","destination":"/api/$1"}]}
+{
+  "rewrites": [
+    { "source": "/api/hermes", "destination": "/api/hermes" },
+    { "source": "/api/notificacoes", "destination": "/api/notificacoes" },
+    { "source": "/api/pev-importacao", "destination": "/api/pev-importacao" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
