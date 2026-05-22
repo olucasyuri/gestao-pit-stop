@@ -533,12 +533,37 @@ async function PEV_sendHermes(tipo, payload) {
   return data;
 }
 
+function PEV_getDestinatariosHermes() {
+  // Usa a mesma base de colaboradores já utilizada pelos botões funcionais do PIT STOP.
+  // Importante: o Hermes só consegue disparar privado quando recebe discord_id.
+  if (Array.isArray(window.colaboradores) && window.colaboradores.length) {
+    return window.colaboradores.filter(c => c && c.ativo !== false && c.discord_id);
+  }
+
+  if (Array.isArray(colaboradores) && colaboradores.length) {
+    return colaboradores.filter(c => c && c.ativo !== false && c.discord_id);
+  }
+
+  if (typeof getDestinatariosAviso === 'function') {
+    return getDestinatariosAviso().filter(c => c && c.discord_id);
+  }
+
+  return [];
+}
+
 async function PEV_sendDiscord(tipo) {
   const out = tipo === 'escala' ? document.getElementById('pev-escala-output') : document.getElementById('pev-almoco-output');
   const content = out?.textContent?.trim();
 
   if (!content || content.startsWith('Configure') || content.startsWith('Marque')) {
     alert('Gere a mensagem antes de enviar.');
+    return;
+  }
+
+  const destinatarios = PEV_getDestinatariosHermes();
+
+  if (!destinatarios.length) {
+    alert('Nenhum destinatário com Discord ID foi encontrado para o Hermes. Cadastre os Discord IDs ou use um webhook de canal.');
     return;
   }
 
@@ -553,8 +578,8 @@ async function PEV_sendDiscord(tipo) {
   }
 
   try {
-    // O Hermes atual não reconhece os tipos "pev-escala" ou "pev-almoco".
-    // Por isso, o PEV usa o mesmo fluxo genérico já funcional do painel: "novo-aviso".
+    // O Hermes atual reconhece o fluxo genérico "novo-aviso".
+    // A diferença desta correção é enviar destinatarios reais com discord_id.
     const titulo = tipo === 'escala' ? 'Escala PEV' : 'Horários de Almoço PEV';
 
     await PEV_sendHermes('novo-aviso', {
@@ -565,10 +590,11 @@ async function PEV_sendDiscord(tipo) {
       data: PEV_currentDate,
       setor: 'PEV',
       origem: 'gestao-pev',
-      destinatarios: [],
+      destinatarios,
     });
 
-    if (typeof toast === 'function') toast('✅ Mensagem PEV enviada pelo Hermes!');
+    if (typeof toast === 'function') toast(`✅ Mensagem PEV enviada para ${destinatarios.length} colaborador(es)!`);
+    else alert(`Mensagem PEV enviada para ${destinatarios.length} colaborador(es)!`);
   } catch(e) {
     alert('Erro ao enviar pelo Hermes: ' + e.message);
   } finally {
