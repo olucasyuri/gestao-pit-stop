@@ -553,12 +553,19 @@ async function PEV_sendDiscord(tipo) {
   }
 
   try {
-    await PEV_sendHermes(tipo === 'escala' ? 'pev-escala' : 'pev-almoco', {
+    // O Hermes atual não reconhece os tipos "pev-escala" ou "pev-almoco".
+    // Por isso, o PEV usa o mesmo fluxo genérico já funcional do painel: "novo-aviso".
+    const titulo = tipo === 'escala' ? 'Escala PEV' : 'Horários de Almoço PEV';
+
+    await PEV_sendHermes('novo-aviso', {
+      canal: 'pev',
+      titulo,
       mensagem: content,
       content,
       data: PEV_currentDate,
       setor: 'PEV',
       origem: 'gestao-pev',
+      destinatarios: [],
     });
 
     if (typeof toast === 'function') toast('✅ Mensagem PEV enviada pelo Hermes!');
