@@ -560,13 +560,6 @@ async function PEV_sendDiscord(tipo) {
     return;
   }
 
-  const destinatarios = PEV_getDestinatariosHermes();
-
-  if (!destinatarios.length) {
-    alert('Nenhum destinatário com Discord ID foi encontrado para o Hermes. Cadastre os Discord IDs ou use um webhook de canal.');
-    return;
-  }
-
   const btn = tipo === 'escala'
     ? document.getElementById('pev-btn-send-escala')
     : document.getElementById('pev-btn-send-almoco');
@@ -578,23 +571,21 @@ async function PEV_sendDiscord(tipo) {
   }
 
   try {
-    // O Hermes atual reconhece o fluxo genérico "novo-aviso".
-    // A diferença desta correção é enviar destinatarios reais com discord_id.
-    const titulo = tipo === 'escala' ? 'Escala PEV' : 'Horários de Almoço PEV';
+    // Tipos dedicados: pev-escala / pev-almoco
+    // O Hermes envia diretamente para o canal configurado (CHANNEL_PEV_ESCALA / CHANNEL_PEV_ALMOCO).
+    // Não requer destinatários com discord_id — basta o bot ter acesso ao canal.
+    const hermesTopo = tipo === 'escala' ? 'pev-escala' : 'pev-almoco';
 
-    await PEV_sendHermes('novo-aviso', {
-      canal: 'pev',
-      titulo,
+    await PEV_sendHermes(hermesTopo, {
       mensagem: content,
       content,
       data: PEV_currentDate,
       setor: 'PEV',
       origem: 'gestao-pev',
-      destinatarios,
     });
 
-    if (typeof toast === 'function') toast(`✅ Mensagem PEV enviada para ${destinatarios.length} colaborador(es)!`);
-    else alert(`Mensagem PEV enviada para ${destinatarios.length} colaborador(es)!`);
+    if (typeof toast === 'function') toast(`✅ Escala PEV enviada para o Discord com sucesso!`);
+    else alert(`Escala PEV enviada para o Discord com sucesso!`);
   } catch(e) {
     alert('Erro ao enviar pelo Hermes: ' + e.message);
   } finally {
