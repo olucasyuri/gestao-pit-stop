@@ -3917,242 +3917,488 @@ input[type="number"] {
 .btn-discord:hover { background: rgba(88,101,242,0.24); }
 
 
-/* ==========================================================================
-   Calendário de Folgas
-   ========================================================================== */
+/* =====================================================
+   MELHORIAS — Kanban, Calendários, Avisos, Dashboard
+   ===================================================== */
 
-.cal-month-label {
-  font-family: "Syne", sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  min-width: 140px;
-  text-align: center;
-  color: var(--text);
-}
-
-.cal-nav-btn {
-  padding: 6px 12px !important;
-  min-width: 36px;
-}
-
-.cal-grid-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 16px;
-  overflow-x: auto;
-}
-
-.cal-grid {
+/* ── KANBAN BOARD ── */
+.kanban-board {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  min-width: 420px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: start;
 }
+@media (max-width: 900px) { .kanban-board { grid-template-columns: 1fr; } }
 
-.cal-header-cell {
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  padding: 6px 0;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-}
-
-.cal-cell {
-  min-height: 60px;
+.kanban-col {
   background: var(--surface2);
-  border-radius: 10px;
-  padding: 6px 5px 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  position: relative;
-  border: 1px solid transparent;
-}
-
-.cal-cell-empty {
-  background: transparent;
-  border: none;
-}
-
-.cal-today {
-  border-color: var(--gold) !important;
-}
-
-.cal-today .cal-day-num {
-  color: var(--gold);
-  font-weight: 800;
-}
-
-.cal-has-event {
-  background: rgba(88, 101, 242, 0.12);
-  border-color: rgba(88, 101, 242, 0.3);
-}
-
-.cal-day-num {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  line-height: 1;
-}
-
-.cal-event {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 800;
-  border-radius: 5px;
-  padding: 2px 4px;
-  cursor: default;
-  position: relative;
-  white-space: nowrap;
+  border-radius: 14px;
+  border: 1px solid var(--border);
   overflow: hidden;
-  text-overflow: ellipsis;
+  min-height: 300px;
 }
 
-.cal-event-folga {
-  background: rgba(88, 101, 242, 0.25);
-  color: #a5b4fc;
-}
-
-.cal-event-tooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--surface3);
-  color: var(--text);
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-  z-index: 10;
-  pointer-events: none;
-  border: 1px solid var(--border);
-}
-
-.cal-event:hover .cal-event-tooltip {
-  display: block;
-}
-
-.cal-event-list {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.cal-event-row {
+.kanban-col-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border-radius: 10px;
-  background: var(--surface2);
-}
-
-.cal-event-row strong {
-  display: block;
+  gap: 8px;
+  padding: 14px 16px;
   font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
 }
 
-.cal-event-row small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.avatar-sm {
-  width: 30px !important;
-  height: 30px !important;
-  font-size: 11px !important;
+.kanban-col-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-/* ==========================================================================
-   Calendário de Férias — vista anual
-   ========================================================================== */
+.kanban-analise .kanban-col-dot { background: #facc15; }
+.kanban-caso    .kanban-col-dot { background: #f87171; }
+.kanban-concluido .kanban-col-dot { background: #4ade80; }
 
-.ferias-year-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+.kanban-col-title { flex: 1; }
+
+.kanban-col-count {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--muted);
 }
+
+.kanban-cards {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 200px;
+}
+
+.kanban-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: box-shadow .15s, border-color .15s;
+  position: relative;
+}
+.kanban-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.18); border-color: rgba(255,255,255,0.12); }
+
+.kanban-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.kanban-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.kanban-card-motivo {
+  font-size: 12px;
+  color: var(--text);
+  opacity: .75;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+.kanban-card-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.kanban-card-actions .btn {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+.kanban-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ── AVISOS LAYOUT ── */
+.avisos-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 900px) { .avisos-layout { grid-template-columns: 1fr; } }
+
+.avisos-col-form { display: flex; flex-direction: column; gap: 1rem; }
+
+.aviso-hist-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  transition: border-color .15s;
+}
+.aviso-hist-item:hover { border-color: rgba(255,255,255,0.12); }
+.aviso-hist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.aviso-hist-titulo { font-size: 13px; font-weight: 600; }
+.aviso-hist-canal {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(88,101,242,0.14);
+  color: #7984f5;
+  border: 1px solid rgba(88,101,242,0.25);
+  white-space: nowrap;
+}
+.aviso-hist-grupo { font-size: 11px; color: var(--muted); }
+.aviso-hist-time { font-size: 10px; color: var(--muted); }
+
+/* ── CALENDÁRIO DE FOLGAS (mês atual) ── */
+.folga-cal-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.folga-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.folga-cal-title { font-size: 16px; font-weight: 700; }
+.folga-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.folga-cal-day-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.folga-cal-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 2px;
+  font-size: 12px;
+  font-weight: 500;
+  position: relative;
+  cursor: default;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background .12s;
+  min-height: 48px;
+}
+.folga-cal-cell.today {
+  background: rgba(250,204,21,.1);
+  border-color: rgba(250,204,21,.35);
+  color: #facc15;
+  font-weight: 700;
+}
+.folga-cal-cell.has-folga {
+  background: rgba(99,190,255,.1);
+  border-color: rgba(99,190,255,.25);
+}
+.folga-cal-cell.empty { opacity: 0; pointer-events: none; }
+.folga-cal-num { font-size: 12px; font-weight: 600; line-height: 1; }
+.folga-cal-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 3px;
+}
+.folga-cal-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #63beff;
+  flex-shrink: 0;
+}
+.folga-cal-names {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  pointer-events: none;
+}
+.folga-cal-cell.has-folga:hover .folga-cal-names { display: block; }
+
+/* ── CALENDÁRIO DE FÉRIAS (anual) ── */
+.ferias-cal-year-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem;
+}
+.ferias-cal-year-title { font-size: 20px; font-weight: 800; }
+.ferias-months-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1100px) { .ferias-months-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px)  { .ferias-months-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .ferias-month-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  border-radius: 12px;
+  padding: 12px;
 }
-
 .ferias-month-title {
-  font-family: "Syne", sans-serif;
+  font-size: 12px;
   font-weight: 700;
-  font-size: 13px;
-  color: var(--gold);
   text-transform: uppercase;
   letter-spacing: .06em;
-  padding-bottom: 6px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.ferias-month-people {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ferias-person-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(250,204,21,.08);
+  border: 1px solid rgba(250,204,21,.18);
+  font-size: 11px;
+  font-weight: 500;
+}
+.ferias-person-avatar {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(250,204,21,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: #facc15;
+  flex-shrink: 0;
+}
+.ferias-person-name { color: var(--text); flex: 1; }
+.ferias-person-period { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.ferias-month-empty { font-size: 11px; color: var(--muted); padding: 4px 0; }
+
+/* ── DASHBOARD — gráficos ── */
+.dash-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 768px) { .dash-charts-grid { grid-template-columns: 1fr; } }
+
+.dash-chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+}
+.dash-chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+.dash-chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto;
+}
+.dash-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+.dash-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.dash-legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Barras de dias (últimos 7 dias) */
+.dash-bars-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+  padding: 0 4px;
+}
+.dash-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.dash-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #facc15 0%, rgba(250,204,21,.5) 100%);
+  min-height: 4px;
+  transition: height .4s cubic-bezier(.4,0,.2,1);
+}
+.dash-bar-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1;
+}
+.dash-bar-val {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* ── ANIVERSÁRIOS — próximos, melhor visual ── */
+.dash-aniv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dash-aniv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: border-color .15s;
+}
+.dash-aniv-item:hover { border-color: rgba(255,255,255,.1); }
+.dash-aniv-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(99,190,255,.15);
+  border: 1px solid rgba(99,190,255,.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  color: #63beff;
+  flex-shrink: 0;
+}
+.dash-aniv-avatar.gestao-av {
+  background: rgba(250,204,21,.12);
+  border-color: rgba(250,204,21,.25);
+  color: #facc15;
+}
+.dash-aniv-info { flex: 1; min-width: 0; }
+.dash-aniv-name { font-size: 13px; font-weight: 600; }
+.dash-aniv-cargo { font-size: 10px; color: var(--muted); }
+.dash-aniv-badge {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.dash-aniv-badge.hoje { background: rgba(250,204,21,.15); color: #facc15; border: 1px solid rgba(250,204,21,.3); }
+.dash-aniv-badge.breve { background: rgba(99,190,255,.12); color: #63beff; border: 1px solid rgba(99,190,255,.25); }
+.dash-aniv-badge.normal { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── ANIVERSÁRIOS — calendário melhorado ── */
+.bday-cal-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.bday-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 900px) { .bday-cal-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.bday-cal-month {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.bday-cal-month-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.bday-cal-month.current-month {
+  border-color: rgba(250,204,21,.3);
+  background: rgba(250,204,21,.04);
+}
+.bday-cal-month.current-month .bday-cal-month-title { color: #facc15; }
+.bday-person-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--border);
 }
-
-.ferias-empty {
-  color: var(--muted);
+.bday-person-entry:last-child { border-bottom: none; }
+.bday-person-day {
   font-size: 12px;
-  text-align: center;
-  padding: 8px 0;
+  font-weight: 700;
+  color: var(--text);
+  width: 22px;
+  flex-shrink: 0;
 }
+.bday-person-name-sm { font-size: 12px; color: var(--text); flex: 1; }
+.bday-person-cargo-sm {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.bday-month-empty-sm { font-size: 11px; color: var(--muted); padding: 2px 0; }
 
-.ferias-person-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
+/* Show-hide pendencia form */
+#pendencia-form-card { transition: opacity .2s; }
 
-.ferias-person-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.ferias-person-info strong {
-  display: block;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ferias-person-info small {
-  display: block;
-  color: var(--muted);
-  font-size: 10px;
-  margin-bottom: 4px;
-}
-
-.ferias-bar-bg {
-  position: relative;
-  height: 6px;
-  background: var(--surface3);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.ferias-bar-fill {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(90deg, var(--gold), #f0a500);
-  border-radius: 4px;
-  min-width: 6px;
-}

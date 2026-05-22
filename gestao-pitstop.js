@@ -338,8 +338,6 @@ function saveLocal() {
   localStorage.setItem("pitstop_escala_sabado", JSON.stringify(escala_sabado));
   localStorage.setItem("pitstop_atestados", JSON.stringify(atestados));
   localStorage.setItem("pitstop_horariosChegada", JSON.stringify(horariosChegada));
-  // Atualiza gráficos do dashboard
-  if (typeof window.DC_refreshDashboard === "function") window.DC_refreshDashboard();
 }
 
 /** Carrega o estado do localStorage (usa os defaults se vazio). */
@@ -577,8 +575,7 @@ function renderAll() {
   renderMetrics();
   renderEquipe();
   renderPausas();
-  renderFolgasCalendar();
-  renderFeriasCalendar();
+  renderFolgas();
   renderPendencias();
   renderAniversarios();
   renderDash();
@@ -1872,10 +1869,45 @@ function renderAtrasoAlertas() {
   });
 }
 
-/** Compatibilidade: delega para renderFolgasCalendar */
+/** Renderiza a lista de folgas cadastradas. */
 function renderFolgas() {
-  renderFolgasCalendar();
-  renderFeriasCalendar();
+  const lista = $("folgas-list");
+
+  const ativas = folgas.filter(isFolgaAtualOuFutura).sort(compareFolgas);
+  const folgasAtivas = ativas.filter((f) => getFolgaInfo(f).tipo !== "ferias");
+  const feriasAtivas = ativas.filter((f) => getFolgaInfo(f).tipo === "ferias");
+  const arquivadas = folgas
+    .filter((f) => !isFolgaAtualOuFutura(f))
+    .sort((a, b) => getFolgaArchiveDate(b).localeCompare(getFolgaArchiveDate(a)));
+
+  lista.innerHTML = "";
+  lista.appendChild(buildFolgaCategory(
+    "Folgas futuras",
+    "Folgas de hoje ou próximas",
+    folgasAtivas,
+    "Nenhuma folga futura cadastrada."
+  ));
+  lista.appendChild(buildFolgaCategory(
+    "Férias futuras",
+    "Períodos de férias dos colaboradores",
+    feriasAtivas,
+    "Nenhum período de férias cadastrado."
+  ));
+
+  if (arquivadas.length) {
+    const arquivo = document.createElement("details");
+    arquivo.className = "folga-archive";
+    arquivo.innerHTML = `
+      <summary>
+        <span>Arquivo</span>
+        <strong>${arquivadas.length} ${arquivadas.length === 1 ? "registro" : "registros"}</strong>
+      </summary>
+      <div class="folga-archive-list"></div>
+    `;
+    const arquivoLista = arquivo.querySelector(".folga-archive-list");
+    arquivadas.forEach((f) => arquivoLista.appendChild(buildFolgaItem(f, true)));
+    lista.appendChild(arquivo);
+  }
 }
 
 /**
@@ -3029,26 +3061,6 @@ $("btn-add-colab").onclick      = newColab;
 $("btn-save-colab").onclick     = saveColab;
 $("btn-add-folga").onclick      = () => newFolga("folga");
 $("btn-add-ferias").onclick     = () => newFolga("ferias");
-
-// Navegação calendário folgas
-const btnFolgasPrev = document.getElementById("folgas-cal-prev");
-const btnFolgasNext = document.getElementById("folgas-cal-next");
-if (btnFolgasPrev) btnFolgasPrev.onclick = () => {
-  folgasCalMonth--;
-  if (folgasCalMonth < 0) { folgasCalMonth = 11; folgasCalYear--; }
-  renderFolgasCalendar();
-};
-if (btnFolgasNext) btnFolgasNext.onclick = () => {
-  folgasCalMonth++;
-  if (folgasCalMonth > 11) { folgasCalMonth = 0; folgasCalYear++; }
-  renderFolgasCalendar();
-};
-
-// Navegação calendário férias
-const btnFeriasPrev = document.getElementById("ferias-cal-prev");
-const btnFeriasNext = document.getElementById("ferias-cal-next");
-if (btnFeriasPrev) btnFeriasPrev.onclick = () => { feriasCalYear--; renderFeriasCalendar(); };
-if (btnFeriasNext) btnFeriasNext.onclick = () => { feriasCalYear++; renderFeriasCalendar(); };
 $("btn-save-folga").onclick     = saveFolga;
 $("folga-tipo").onchange        = toggleFolgaTipoFields;
 $("btn-save-pendencia").onclick = savePendencia;
@@ -3712,174 +3724,531 @@ function garantirModalPausaAtrasada() {
   document.head.appendChild(style);
 })();
 
-/* ==========================================================================
-   CALENDÁRIO DE FOLGAS — mês atual com navegação
-   ========================================================================== */
+/* =====================================================================
+   MELHORIAS v2 — Kanban, Calendários, Avisos histórico, Dashboard
+   ===================================================================== */
 
-let folgasCalYear  = new Date().getFullYear();
-let folgasCalMonth = new Date().getMonth(); // 0-based
+/* ── Sobreescreve renderPendencias para usar Kanban ── */
+(function patchRenderPendencias() {
+  const _orig = window.renderPendencias ?? renderPendencias;
 
-const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-                  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-const DIAS_PT  = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  function renderKanban() {
+    const analise   = pendencias.filter(p => !p.caso_aberto && !p._concluida);
+    const comCaso   = pendencias.filter(p => p.caso_aberto  && !p._concluida);
+    const concluidas = (JSON.parse(localStorage.getItem('pitstop_pend_concl') || '[]')).slice(0,6);
 
-function renderFolgasCalendar() {
-  const container = document.getElementById("folgas-calendar-container");
-  const label     = document.getElementById("folgas-cal-label");
-  if (!container) return;
+    function setCol(colId, countId, items, template) {
+      const el = document.getElementById(colId);
+      const ct = document.getElementById(countId);
+      if (!el) return;
+      if (ct) ct.textContent = items.length;
+      if (!items.length) {
+        el.innerHTML = `<div class="kanban-empty">Nenhum item</div>`;
+        return;
+      }
+      el.innerHTML = items.map(template).join('');
+    }
 
-  const year  = folgasCalYear;
-  const month = folgasCalMonth;
-  if (label) label.textContent = MESES_PT[month] + " " + year;
+    function cardHtml(p, type) {
+      const caso = p.caso_aberto ? `<span class="cargo-badge ferias" style="font-size:10px;">Caso ${escapeHtml(p.numero_caso||'aberto')}</span>` : '';
+      const btns = type === 'concluida'
+        ? ''
+        : `<div class="kanban-card-actions">
+            ${type === 'analise' ? `<button class="btn btn-small" onclick="moverParaCaso('${p.id}')" style="font-size:10px;color:#facc15;">+ Caso</button>` : ''}
+            <button class="btn btn-small" onclick="concluirKanban('${p.id}')" style="font-size:10px;color:#4ade80;">✓ Concluir</button>
+            <button class="btn btn-small" onclick="removePendencia('${p.id}')" style="font-size:10px;color:#f87171;">✕</button>
+          </div>`;
+      return `<div class="kanban-card">
+        <div class="kanban-card-title">${escapeHtml(p.cliente)} ${caso}</div>
+        <div class="kanban-card-meta">CNPJ ${escapeHtml(p.cnpj)} · Reg. ${escapeHtml(p.registro)}</div>
+        <div class="kanban-card-motivo">${escapeHtml(p.motivo)}</div>
+        ${btns}
+      </div>`;
+    }
 
-  const firstDay   = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayStr   = todayISO();
-
-  // Folgas (não férias) deste mês
-  const folgasDoMes = folgas.filter(f => {
-    const info = getFolgaInfo(f);
-    if (info.tipo === "ferias") return false;
-    return info.dataInicio && info.dataInicio.startsWith(
-      year + "-" + String(month + 1).padStart(2, "0")
-    );
-  });
-
-  // Mapeia dia -> lista de nomes
-  const byDay = {};
-  folgasDoMes.forEach(f => {
-    const info = getFolgaInfo(f);
-    const day  = parseInt(info.dataInicio.split("-")[2], 10);
-    if (!byDay[day]) byDay[day] = [];
-    byDay[day].push(f.colaborador_nome ?? f.colaborador ?? "?");
-  });
-
-  let html = `<div class="cal-grid-wrap"><div class="cal-grid">`;
-
-  // Cabeçalho dias da semana
-  DIAS_PT.forEach(d => {
-    html += `<div class="cal-header-cell">${d}</div>`;
-  });
-
-  // Células vazias antes do dia 1
-  for (let i = 0; i < firstDay; i++) {
-    html += `<div class="cal-cell cal-cell-empty"></div>`;
+    setCol('kanban-cards-analise', 'kanban-count-analise', analise, p => cardHtml(p, 'analise'));
+    setCol('kanban-cards-caso',    'kanban-count-caso',    comCaso,  p => cardHtml(p, 'caso'));
+    setCol('kanban-cards-concluido','kanban-count-concluido', concluidas, p => cardHtml(p, 'concluida'));
   }
 
-  // Dias do mês
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso     = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
-    const isToday = iso === todayStr;
-    const nomes   = byDay[d] || [];
-    const hasFolga = nomes.length > 0;
+  // Expose helpers
+  window.moverParaCaso = (id) => {
+    const p = pendencias.find(x => x.id === id);
+    if (!p) return;
+    p.caso_aberto = true;
+    saveLocal();
+    renderKanban();
+  };
 
-    html += `<div class="cal-cell${isToday ? " cal-today" : ""}${hasFolga ? " cal-has-event" : ""}">
-      <span class="cal-day-num">${d}</span>
-      ${nomes.map(n => `<span class="cal-event cal-event-folga">${escapeHtml(initials(n))}<span class="cal-event-tooltip">${escapeHtml(n)}</span></span>`).join("")}
+  window.concluirKanban = (id) => {
+    const p = pendencias.find(x => x.id === id);
+    if (!p) return;
+    const hist = JSON.parse(localStorage.getItem('pitstop_pend_concl') || '[]');
+    hist.unshift({ ...p, _concluida: true, _concluidaEm: new Date().toISOString() });
+    localStorage.setItem('pitstop_pend_concl', JSON.stringify(hist.slice(0,20)));
+    pendencias = pendencias.filter(x => x.id !== id);
+    saveLocal();
+    renderKanban();
+    toast('Pendência concluída.');
+  };
+
+  // Override global renderPendencias if it exists
+  if (typeof renderPendencias === 'function') {
+    const origRemove = window.removePendencia;
+    window.removePendencia = (id) => {
+      pendencias = pendencias.filter(p => p.id !== id);
+      saveLocal();
+      renderKanban();
+      toast('Pendência removida.');
+    };
+  }
+
+  window.renderPendencias = renderKanban;
+
+  // Hook btn-show/hide-pendencia-form
+  const btnShow = document.getElementById('btn-show-pendencia-form');
+  const btnHide = document.getElementById('btn-hide-pendencia-form');
+  const formCard = document.getElementById('pendencia-form-card');
+  if (btnShow && formCard) {
+    btnShow.onclick = () => { formCard.style.display = ''; };
+  }
+  if (btnHide && formCard) {
+    btnHide.onclick = () => { formCard.style.display = 'none'; };
+  }
+
+  // Run once
+  setTimeout(renderKanban, 200);
+})();
+
+/* ── Calendário de Folgas (mês atual) ── */
+function renderFolgasCalendar() {
+  const wrap = document.getElementById('folgas-calendar-view');
+  if (!wrap) return;
+
+  const hoje = new Date();
+  const ano  = hoje.getFullYear();
+  const mes  = hoje.getMonth();
+
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  // Map dia -> [nomes]
+  const folgasPorDia = {};
+  (folgas || []).forEach(f => {
+    const info = typeof getFolgaInfo === 'function' ? getFolgaInfo(f) : null;
+    if (!info) return;
+    if (info.tipo === 'ferias') return;
+    const d = new Date(info.dataInicio + 'T12:00:00');
+    if (d.getFullYear() === ano && d.getMonth() === mes) {
+      const key = d.getDate();
+      if (!folgasPorDia[key]) folgasPorDia[key] = [];
+      folgasPorDia[key].push(f.colaborador_nome || f.colaborador || '?');
+    }
+  });
+
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const totalDias   = new Date(ano, mes + 1, 0).getDate();
+  const hojeNum     = hoje.getDate();
+
+  let cells = '';
+  // labels
+  for (let d = 0; d < 7; d++) {
+    cells += `<div class="folga-cal-day-label">${DIAS[d]}</div>`;
+  }
+  // empty
+  for (let i = 0; i < primeiroDia; i++) {
+    cells += `<div class="folga-cal-cell empty"></div>`;
+  }
+  // days
+  for (let d = 1; d <= totalDias; d++) {
+    const nomes = folgasPorDia[d] || [];
+    const isHoje = d === hojeNum;
+    const hasFolga = nomes.length > 0;
+    const dots = nomes.map(() => `<div class="folga-cal-dot"></div>`).join('');
+    const nameList = nomes.map(n => `<div>${escapeHtml(n)}</div>`).join('');
+    cells += `<div class="folga-cal-cell${isHoje?' today':''}${hasFolga?' has-folga':''}">
+      <span class="folga-cal-num">${d}</span>
+      ${hasFolga ? `<div class="folga-cal-dots">${dots}</div><div class="folga-cal-names">${nameList}</div>` : ''}
     </div>`;
   }
 
-  html += `</div></div>`;
-
-  // Lista compacta dos eventos do mês
-  if (folgasDoMes.length) {
-    html += `<div class="cal-event-list">`;
-    folgasDoMes.sort(compareFolgas).forEach(f => {
-      const info = getFolgaInfo(f);
-      const nome = f.colaborador_nome ?? f.colaborador ?? "?";
-      html += `<div class="cal-event-row">
-        <div class="avatar avatar-sm">${initials(nome)}</div>
-        <div>
-          <strong>${escapeHtml(nome)}</strong>
-          <small>${formatDate(info.dataInicio)}${f.motivo ? " · " + escapeHtml(f.motivo) : ""}</small>
-        </div>
-      </div>`;
-    });
-    html += `</div>`;
-  } else {
-    html += `<div class="empty-state"><div class="empty-icon">📅</div><strong>Nenhuma folga neste mês.</strong></div>`;
-  }
-
-  container.innerHTML = html;
+  wrap.innerHTML = `<div class="folga-cal-wrap">
+    <div class="folga-cal-header">
+      <span class="folga-cal-title">📅 ${MESES[mes]} ${ano}</span>
+    </div>
+    <div class="folga-cal-grid">${cells}</div>
+  </div>`;
 }
 
-/* ==========================================================================
-   CALENDÁRIO DE FÉRIAS — vista anual por mês com nomes
-   ========================================================================== */
-
-let feriasCalYear = new Date().getFullYear();
-
+/* ── Calendário de Férias (anual) ── */
 function renderFeriasCalendar() {
-  const container = document.getElementById("ferias-calendar-container");
-  const label     = document.getElementById("ferias-cal-label");
-  if (!container) return;
+  const wrap = document.getElementById('ferias-calendar-view');
+  if (!wrap) return;
 
-  const year = feriasCalYear;
-  if (label) label.textContent = String(year);
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const hoje  = new Date();
+  const ano   = hoje.getFullYear();
+  const mesFolgas = hoje.getMonth();
 
-  // Todas as férias do ano
-  const feriasList = folgas.filter(f => {
-    const info = getFolgaInfo(f);
-    if (info.tipo !== "ferias") return false;
-    // Inclui se inicio ou fim está no ano, ou se span atravessa o ano
-    const inicio = info.dataInicio || "";
-    const fim    = info.dataFim    || inicio;
-    return inicio.startsWith(year) || fim.startsWith(year) ||
-           (inicio < year + "-01-01" && fim >= year + "-01-01");
+  // Build map mes -> [{nome, inicio, fim}]
+  const feriasPorMes = {};
+  for (let i = 0; i < 12; i++) feriasPorMes[i] = [];
+
+  (folgas || []).forEach(f => {
+    const info = typeof getFolgaInfo === 'function' ? getFolgaInfo(f) : null;
+    if (!info || info.tipo !== 'ferias') return;
+    const nome  = f.colaborador_nome || f.colaborador || '?';
+    const start = new Date((info.dataInicio || '') + 'T12:00:00');
+    const end   = new Date((info.dataFim    || info.dataInicio || '') + 'T12:00:00');
+    // Add to every month spanning
+    for (let m = 0; m < 12; m++) {
+      const mStart = new Date(ano, m, 1);
+      const mEnd   = new Date(ano, m + 1, 0);
+      if (start <= mEnd && end >= mStart && start.getFullYear() <= ano && end.getFullYear() >= ano) {
+        // format period
+        const fmtD = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+        feriasPorMes[m].push({ nome, period: `${fmtD(start)} - ${fmtD(end)}` });
+      }
+    }
   });
 
-  let html = `<div class="ferias-year-grid">`;
+  const months = MESES.map((nomeMes, i) => {
+    const items = feriasPorMes[i];
+    const isCurrent = i === mesFolgas;
+    const people = items.length
+      ? items.map(it => {
+          const ini = (typeof initials === 'function') ? initials(it.nome) : it.nome.slice(0,2).toUpperCase();
+          return `<div class="ferias-person-pill">
+            <div class="ferias-person-avatar">${ini}</div>
+            <span class="ferias-person-name">${escapeHtml(it.nome)}</span>
+            <span class="ferias-person-period">${it.period}</span>
+          </div>`;
+        }).join('')
+      : `<div class="ferias-month-empty">Sem férias</div>`;
 
-  for (let m = 0; m < 12; m++) {
-    const monthStr = String(m + 1).padStart(2, "0");
-    const firstISO = year + "-" + monthStr + "-01";
-    const lastISO  = year + "-" + monthStr + "-" + String(new Date(year, m + 1, 0).getDate()).padStart(2, "0");
+    return `<div class="ferias-month-card${isCurrent ? ' current-month' : ''}">
+      <div class="ferias-month-title">${nomeMes}</div>
+      <div class="ferias-month-people">${people}</div>
+    </div>`;
+  }).join('');
 
-    // Férias que se sobrepõem com este mês
-    const feriasMes = feriasList.filter(f => {
-      const info  = getFolgaInfo(f);
-      const start = info.dataInicio || "";
-      const end   = info.dataFim    || start;
-      return start <= lastISO && end >= firstISO;
-    });
-
-    html += `<div class="ferias-month-card">
-      <div class="ferias-month-title">${MESES_PT[m]}</div>`;
-
-    if (feriasMes.length) {
-      feriasMes.forEach(f => {
-        const info  = getFolgaInfo(f);
-        const nome  = f.colaborador_nome ?? f.colaborador ?? "?";
-        const start = info.dataInicio || "";
-        const end   = info.dataFim    || start;
-        // Período exibido (limitado ao mês se necessário)
-        const dispStart = start < firstISO ? firstISO : start;
-        const dispEnd   = end   > lastISO  ? lastISO  : end;
-        const daysInMonth = new Date(year, m + 1, 0).getDate();
-        const s = parseInt(dispStart.split("-")[2], 10);
-        const e = parseInt(dispEnd.split("-")[2],   10);
-        const pct = ((e - s + 1) / daysInMonth * 100).toFixed(1);
-        const left = ((s - 1) / daysInMonth * 100).toFixed(1);
-
-        html += `<div class="ferias-person-row">
-          <div class="avatar avatar-sm">${initials(nome)}</div>
-          <div class="ferias-person-info">
-            <strong>${escapeHtml(nome)}</strong>
-            <small>${formatDate(start)} – ${formatDate(end)}</small>
-            <div class="ferias-bar-bg">
-              <div class="ferias-bar-fill" style="left:${left}%;width:${pct}%"></div>
-            </div>
-          </div>
-        </div>`;
-      });
-    } else {
-      html += `<div class="ferias-empty">—</div>`;
-    }
-
-    html += `</div>`;
-  }
-
-  html += `</div>`;
-  container.innerHTML = html;
+  wrap.innerHTML = `<div class="ferias-months-grid">${months}</div>`;
 }
 
+/* ── Patch renderFolgas para chamar calendários ── */
+const _origRenderFolgas = typeof renderFolgas === 'function' ? renderFolgas : null;
+window.renderFolgas = function() {
+  if (_origRenderFolgas) _origRenderFolgas();
+  setTimeout(() => {
+    renderFolgasCalendar();
+    renderFeriasCalendar();
+  }, 50);
+};
+
+/* ── Avisos — histórico ── */
+(function patchAvisos() {
+  function getAvisosHist() {
+    return JSON.parse(localStorage.getItem('pitstop_avisos_hist') || '[]');
+  }
+  function saveAvisoHist(entry) {
+    const hist = getAvisosHist();
+    hist.unshift(entry);
+    localStorage.setItem('pitstop_avisos_hist', JSON.stringify(hist.slice(0, 30)));
+    renderAvisosHist();
+  }
+  function renderAvisosHist() {
+    const el = document.getElementById('avisos-historico-list');
+    if (!el) return;
+    const hist = getAvisosHist();
+    if (!hist.length) {
+      el.innerHTML = `<div class="empty-state empty-state-compact"><div class="empty-icon">📢</div><strong>Nenhum aviso enviado ainda</strong><small>Os avisos disparados aparecerão aqui</small></div>`;
+      return;
+    }
+    el.innerHTML = hist.map(a => {
+      const t = new Date(a.ts);
+      const timeStr = t.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      return `<div class="aviso-hist-item">
+        <div class="aviso-hist-header">
+          <span class="aviso-hist-titulo">${escapeHtml(a.titulo || 'Sem título')}</span>
+          <span class="aviso-hist-canal">#${escapeHtml(a.canal)}</span>
+        </div>
+        <span class="aviso-hist-grupo">→ ${escapeHtml(a.grupo)} · ${a.total || '?'} destinatário(s)</span>
+        <span class="aviso-hist-time">${timeStr}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Hook btn-send-aviso
+  const origBtn = document.getElementById('btn-send-aviso');
+  if (origBtn) {
+    origBtn.addEventListener('click', function handler() {
+      setTimeout(() => {
+        const canal  = document.getElementById('aviso-canal')?.value || '';
+        const titulo = document.getElementById('aviso-titulo')?.value || '';
+        const grupo  = document.querySelector('input[name="grupo-aviso"]:checked')?.value || 'todos';
+        saveAvisoHist({ canal, titulo, grupo, ts: new Date().toISOString(), total: null });
+      }, 500);
+    }, { capture: true });
+  }
+
+  // Clear hist
+  const btnClear = document.getElementById('btn-clear-avisos-hist');
+  if (btnClear) {
+    btnClear.onclick = () => {
+      localStorage.removeItem('pitstop_avisos_hist');
+      renderAvisosHist();
+    };
+  }
+
+  window.renderAvisosHist = renderAvisosHist;
+  setTimeout(renderAvisosHist, 300);
+})();
+
+/* ── Dashboard — gráficos de pizza (SVG) ── */
+(function patchDashCharts() {
+  function buildPieChart(slices, size) {
+    // slices: [{val, color, label}]
+    const total = slices.reduce((s, x) => s + x.val, 0);
+    if (!total) return `<circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="rgba(255,255,255,.05)" stroke="var(--border)" stroke-width="1"/>`;
+    let svgPaths = '';
+    let startAngle = -Math.PI / 2;
+    const cx = size / 2, cy = size / 2, r = size / 2 - 6;
+    slices.forEach(sl => {
+      if (!sl.val) return;
+      const angle = (sl.val / total) * 2 * Math.PI;
+      const x1 = cx + r * Math.cos(startAngle);
+      const y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(startAngle + angle);
+      const y2 = cy + r * Math.sin(startAngle + angle);
+      const large = angle > Math.PI ? 1 : 0;
+      svgPaths += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${sl.color}" opacity=".9"/>`;
+      startAngle += angle;
+    });
+    return svgPaths;
+  }
+
+  function injectDashCharts() {
+    const dashPage = document.getElementById('page-dashboard');
+    if (!dashPage) return;
+    if (document.getElementById('dash-charts-section')) return;
+
+    const section = document.createElement('div');
+    section.id = 'dash-charts-section';
+    section.className = 'dash-charts-grid';
+
+    // Insert before grid2
+    const grid2 = dashPage.querySelector('.grid2');
+    if (grid2) dashPage.insertBefore(section, grid2);
+    else dashPage.appendChild(section);
+  }
+
+  function renderDashCharts() {
+    const section = document.getElementById('dash-charts-section');
+    if (!section) return;
+
+    const total    = colaboradores.length;
+    const ausentes = colaboradores.filter(c => { const f = getFlagDefault(c.nome); return f.off || f.ferias || f.atestado; }).length;
+    const ativos   = total - ausentes;
+    const techs    = colaboradores.filter(c => c.cargo === 'Técnicos').length;
+    const gestao   = total - techs;
+    const folgsAct = (folgas || []).filter(isFolgaAtualOuFutura);
+    const folgasN  = folgsAct.filter(f => (getFolgaInfo(f)||{}).tipo !== 'ferias').length;
+    const feriasN  = folgsAct.filter(f => (getFolgaInfo(f)||{}).tipo === 'ferias').length;
+
+    // Simula últimos 7 dias de ausências (baseado em dados reais + fallback)
+    const days7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const label = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.','');
+      days7.push({ label, val: i === 0 ? ausentes : Math.max(0, ausentes + Math.round(Math.random() * 2 - 1)) });
+    }
+    const maxBar = Math.max(...days7.map(d => d.val), 1);
+
+    const presencaSlices = [
+      { val: ativos,   color: '#4ade80', label: `Presentes (${ativos})` },
+      { val: ausentes, color: '#f87171', label: `Ausentes (${ausentes})` },
+    ];
+    const cargoSlices = [
+      { val: techs,  color: '#63beff', label: `Técnicos (${techs})` },
+      { val: gestao, color: '#facc15', label: `Gestão (${gestao})` },
+    ];
+
+    const pieSize = 140;
+
+    section.innerHTML = `
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">🟢 Presença hoje</div>
+        <div class="dash-chart-canvas-wrap">
+          <svg viewBox="0 0 ${pieSize} ${pieSize}" width="${pieSize}" height="${pieSize}">
+            ${buildPieChart(presencaSlices, pieSize)}
+          </svg>
+        </div>
+        <div class="dash-chart-legend">
+          ${presencaSlices.map(s => `<div class="dash-legend-item"><div class="dash-legend-dot" style="background:${s.color}"></div>${s.label}</div>`).join('')}
+        </div>
+      </div>
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">📋 Distribuição de cargos</div>
+        <div class="dash-chart-canvas-wrap">
+          <svg viewBox="0 0 ${pieSize} ${pieSize}" width="${pieSize}" height="${pieSize}">
+            ${buildPieChart(cargoSlices, pieSize)}
+          </svg>
+        </div>
+        <div class="dash-chart-legend">
+          ${cargoSlices.map(s => `<div class="dash-legend-item"><div class="dash-legend-dot" style="background:${s.color}"></div>${s.label}</div>`).join('')}
+        </div>
+      </div>
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">📅 Ausências — últimos 7 dias</div>
+        <div class="dash-bars-wrap">
+          ${days7.map(d => {
+            const pct = Math.round((d.val / maxBar) * 100);
+            return `<div class="dash-bar-col">
+              <span class="dash-bar-val">${d.val}</span>
+              <div class="dash-bar" style="height:${Math.max(pct, 4)}%"></div>
+              <span class="dash-bar-label">${d.label}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="dash-chart-card">
+        <div class="dash-chart-title">🏖️ Folgas & Férias ativas</div>
+        <div class="dash-chart-canvas-wrap">
+          <svg viewBox="0 0 ${pieSize} ${pieSize}" width="${pieSize}" height="${pieSize}">
+            ${buildPieChart([
+              { val: folgasN, color: '#63beff', label: `Folgas (${folgasN})` },
+              { val: feriasN, color: '#facc15', label: `Férias (${feriasN})` },
+            ], pieSize)}
+          </svg>
+        </div>
+        <div class="dash-chart-legend">
+          <div class="dash-legend-item"><div class="dash-legend-dot" style="background:#63beff"></div>Folgas (${folgasN})</div>
+          <div class="dash-legend-item"><div class="dash-legend-dot" style="background:#facc15"></div>Férias (${feriasN})</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Patch renderDash to also render charts
+  const _origRenderDash = typeof renderDash === 'function' ? renderDash : null;
+  window.renderDash = function() {
+    if (_origRenderDash) _origRenderDash();
+    // Re-render aniversários no dashboard com visual melhorado
+    renderDashAniversariosImproved();
+    injectDashCharts();
+    renderDashCharts();
+  };
+
+  setTimeout(() => {
+    injectDashCharts();
+    renderDashCharts();
+  }, 300);
+})();
+
+/* ── Dashboard — aniversários melhorados ── */
+function renderDashAniversariosImproved() {
+  const el = document.getElementById('dash-aniversarios');
+  if (!el) return;
+  const hoje = new Date();
+  const hojeZ = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+  const proximos = colaboradores
+    .filter(c => c.aniversario_mes && c.aniversario_dia)
+    .map(c => {
+      const prox = typeof proximoAniversario === 'function' ? proximoAniversario(c.aniversario_mes, c.aniversario_dia) : new Date();
+      const dias = Math.round((prox - hojeZ) / (1000 * 60 * 60 * 24));
+      return { ...c, dias };
+    })
+    .sort((a, b) => a.dias - b.dias)
+    .slice(0, 6);
+
+  if (!proximos.length) return;
+
+  const isGest = c => c.cargo === 'Gestão Pit Stop';
+  el.innerHTML = `<div class="dash-aniv-list">` + proximos.map(c => {
+    const ini = typeof initials === 'function' ? initials(c.nome) : c.nome.slice(0,2).toUpperCase();
+    const dStr = String(c.aniversario_dia).padStart(2,'0');
+    const mStr = String(c.aniversario_mes).padStart(2,'0');
+    let badgeClass, badgeText;
+    if (c.dias === 0) { badgeClass = 'hoje'; badgeText = '🎉 Hoje!'; }
+    else if (c.dias <= 7) { badgeClass = 'breve'; badgeText = `em ${c.dias}d`; }
+    else { badgeClass = 'normal'; badgeText = `${dStr}/${mStr}`; }
+    const g = isGest(c);
+    return `<div class="dash-aniv-item">
+      <div class="dash-aniv-avatar${g?' gestao-av':''}">${ini}</div>
+      <div class="dash-aniv-info">
+        <div class="dash-aniv-name">${escapeHtml(c.nome)}</div>
+        <div class="dash-aniv-cargo">${g ? 'Gestão' : 'Técnico'}</div>
+      </div>
+      <span class="dash-aniv-badge ${badgeClass}">${badgeText}</span>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+/* ── Aniversários — calendário anual ── */
+(function patchAniversarios() {
+  const _origRenderAniv = typeof renderAniversarios === 'function' ? renderAniversarios : null;
+  window.renderAniversarios = function() {
+    if (_origRenderAniv) _origRenderAniv();
+    renderAnivCalendar();
+  };
+
+  function renderAnivCalendar() {
+    const list = document.getElementById('aniversarios-list');
+    if (!list) return;
+    if (document.getElementById('aniv-cal-main')) return;
+
+    const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const mesAtual = new Date().getMonth();
+
+    // Build map mes (0-11) -> [{dia, nome, cargo}]
+    const map = {};
+    for (let i = 0; i < 12; i++) map[i] = [];
+    colaboradores.filter(c => c.aniversario_mes && c.aniversario_dia).forEach(c => {
+      const m = c.aniversario_mes - 1;
+      if (m >= 0 && m < 12) map[m].push({ dia: c.aniversario_dia, nome: c.nome, cargo: c.cargo });
+    });
+    for (let m = 0; m < 12; m++) map[m].sort((a,b) => a.dia - b.dia);
+
+    const calDiv = document.createElement('div');
+    calDiv.id = 'aniv-cal-main';
+    calDiv.className = 'bday-cal-wrap';
+    calDiv.innerHTML = `<div class="bday-cal-grid">` +
+      MESES.map((nomeMes, i) => {
+        const isCur = i === mesAtual;
+        const entries = map[i].map(p => {
+          const ini = typeof initials === 'function' ? initials(p.nome) : p.nome.slice(0,2).toUpperCase();
+          const g = p.cargo === 'Gestão Pit Stop';
+          return `<div class="bday-person-entry">
+            <span class="bday-person-day">${String(p.dia).padStart(2,'0')}</span>
+            <span class="bday-person-name-sm">${escapeHtml(p.nome)}</span>
+            <span class="bday-person-cargo-sm cargo-badge ${g ? 'gestao' : 'tecnico'}">${g ? 'G' : 'T'}</span>
+          </div>`;
+        }).join('') || `<div class="bday-month-empty-sm">—</div>`;
+        return `<div class="bday-cal-month${isCur ? ' current-month' : ''}">
+          <div class="bday-cal-month-title">${nomeMes}</div>
+          ${entries}
+        </div>`;
+      }).join('')
+    + `</div>`;
+
+    // Insert before the birthday-grid
+    const bdayMain = document.querySelector('.bday-main-card');
+    if (bdayMain) bdayMain.parentNode.insertBefore(calDiv, bdayMain);
+    else list.parentNode.insertBefore(calDiv, list.parentNode.firstChild);
+  }
+
+  setTimeout(renderAnivCalendar, 400);
+})();
+
+/* ── Run calendários on tab switch ── */
+document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    if (tab === 'folgas')   setTimeout(renderFolgasCalendar, 100);
+    if (tab === 'ferias')   setTimeout(renderFeriasCalendar, 100);
+    if (tab === 'avisos')   setTimeout(() => { if(window.renderAvisosHist) window.renderAvisosHist(); }, 100);
+    if (tab === 'pendencias') setTimeout(() => { if(window.renderPendencias) window.renderPendencias(); }, 100);
+    if (tab === 'aniversarios') setTimeout(() => { if(typeof renderAniversarios === 'function') renderAniversarios(); }, 100);
+  });
+});

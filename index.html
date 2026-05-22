@@ -52,14 +52,14 @@
 
           <button class="tab" data-tab="folgas" role="tab" aria-selected="false">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/>
             </svg>
             Folgas
           </button>
 
           <button class="tab" data-tab="ferias" role="tab" aria-selected="false">
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              <path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/>
             </svg>
             Férias
           </button>
@@ -258,74 +258,101 @@
       <section class="page" id="page-folgas" role="tabpanel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Lembretes</p>
+            <p class="eyebrow">Calendário do mês</p>
             <h1>Folgas</h1>
           </div>
           <div class="actions">
-            <button class="btn cal-nav-btn" id="folgas-cal-prev" type="button">&#8592;</button>
-            <span class="cal-month-label" id="folgas-cal-label"></span>
-            <button class="btn cal-nav-btn" id="folgas-cal-next" type="button">&#8594;</button>
-            <button class="btn" id="btn-add-folga" type="button">+ Cadastrar folga</button>
+            <button class="btn btn-gold" id="btn-add-folga" type="button">+ Cadastrar folga</button>
           </div>
         </div>
-        <div id="folgas-calendar-container"></div>
+        <div id="folgas-calendar-view"></div>
+        <div class="card" style="margin-top:1rem">
+          <div id="folgas-list" class="list"></div>
+        </div>
       </section>
 
-      <!-- Ferias -->
+      <!-- Férias -->
       <section class="page" id="page-ferias" role="tabpanel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Lembretes</p>
+            <p class="eyebrow">Calendário anual</p>
             <h1>Férias</h1>
           </div>
           <div class="actions">
-            <button class="btn cal-nav-btn" id="ferias-cal-prev" type="button">&#8592;</button>
-            <span class="cal-month-label" id="ferias-cal-label"></span>
-            <button class="btn cal-nav-btn" id="ferias-cal-next" type="button">&#8594;</button>
             <button class="btn btn-gold" id="btn-add-ferias" type="button">+ Cadastrar férias</button>
           </div>
         </div>
-        <div id="ferias-calendar-container"></div>
+        <div id="ferias-calendar-view"></div>
       </section>
 
       <!-- Pendências -->
       <section class="page" id="page-pendencias" role="tabpanel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Análise</p>
+            <p class="eyebrow">Kanban</p>
             <h1>Pendências</h1>
           </div>
+          <button class="btn btn-gold" id="btn-show-pendencia-form" type="button">+ Nova pendência</button>
         </div>
-        <div class="grid2 pendencias-layout">
-          <div class="card form-card pendencia-form">
-            <label for="pendencia-cliente">Cliente</label>
-            <input id="pendencia-cliente" type="text" />
 
-            <label for="pendencia-cnpj">CNPJ</label>
-            <input id="pendencia-cnpj" type="text" />
-
-            <label for="pendencia-registro">Registro</label>
-            <input id="pendencia-registro" type="text" />
-
-            <label for="pendencia-motivo">Motivo da análise</label>
-            <textarea id="pendencia-motivo" rows="4"></textarea>
-
-            <label class="case-toggle" for="pendencia-caso-aberto">
-              <input id="pendencia-caso-aberto" type="checkbox" />
-              Caso em aberto
-            </label>
-
-            <div id="pendencia-numero-caso-wrap">
-              <label for="pendencia-numero-caso">Número do caso</label>
-              <input id="pendencia-numero-caso" type="text" />
-            </div>
-
-            <button class="btn btn-gold" id="btn-save-pendencia" type="button">Adicionar pendência</button>
+        <!-- Formulário colapsável -->
+        <div class="card form-card pendencia-form" id="pendencia-form-card" style="display:none;margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h2 style="margin:0;">Nova pendência</h2>
+            <button class="modal-close-btn" id="btn-hide-pendencia-form" type="button" style="position:static;transform:none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
           </div>
+          <div class="grid2-mini" style="gap:12px;margin-bottom:12px;">
+            <div>
+              <label for="pendencia-cliente">Cliente</label>
+              <input id="pendencia-cliente" type="text" />
+            </div>
+            <div>
+              <label for="pendencia-cnpj">CNPJ</label>
+              <input id="pendencia-cnpj" type="text" />
+            </div>
+          </div>
+          <label for="pendencia-registro">Registro</label>
+          <input id="pendencia-registro" type="text" />
+          <label for="pendencia-motivo">Motivo da análise</label>
+          <textarea id="pendencia-motivo" rows="3"></textarea>
+          <label class="case-toggle" for="pendencia-caso-aberto">
+            <input id="pendencia-caso-aberto" type="checkbox" />
+            Caso em aberto
+          </label>
+          <div id="pendencia-numero-caso-wrap">
+            <label for="pendencia-numero-caso">Número do caso</label>
+            <input id="pendencia-numero-caso" type="text" />
+          </div>
+          <button class="btn btn-gold" id="btn-save-pendencia" type="button">Adicionar pendência</button>
+        </div>
 
-          <div class="card pendencias-card">
-            <h2>Em análise</h2>
-            <div id="pendencias-list" class="list"></div>
+        <!-- Kanban Board -->
+        <div class="kanban-board">
+          <div class="kanban-col" id="kanban-col-analise">
+            <div class="kanban-col-header kanban-analise">
+              <span class="kanban-col-dot"></span>
+              <span class="kanban-col-title">Em Análise</span>
+              <span class="kanban-col-count" id="kanban-count-analise">0</span>
+            </div>
+            <div class="kanban-cards" id="kanban-cards-analise"></div>
+          </div>
+          <div class="kanban-col" id="kanban-col-caso">
+            <div class="kanban-col-header kanban-caso">
+              <span class="kanban-col-dot"></span>
+              <span class="kanban-col-title">Caso Aberto</span>
+              <span class="kanban-col-count" id="kanban-count-caso">0</span>
+            </div>
+            <div class="kanban-cards" id="kanban-cards-caso"></div>
+          </div>
+          <div class="kanban-col" id="kanban-col-concluido">
+            <div class="kanban-col-header kanban-concluido">
+              <span class="kanban-col-dot"></span>
+              <span class="kanban-col-title">Concluídas</span>
+              <span class="kanban-col-count" id="kanban-count-concluido">0</span>
+            </div>
+            <div class="kanban-cards" id="kanban-cards-concluido"></div>
           </div>
         </div>
       </section>
@@ -341,63 +368,84 @@
             </p>
           </div>
         </div>
-        <div class="card form-card">
-          <label for="aviso-canal">Canal do aviso</label>
-          <select id="aviso-canal">
-            <option value="Processos">Processos</option>
-            <option value="Avisos">Avisos</option>
-          </select>
+        <div class="avisos-layout">
+          <!-- Coluna esquerda: formulários -->
+          <div class="avisos-col-form">
+            <div class="card form-card">
+              <label for="aviso-canal">Canal do aviso</label>
+              <select id="aviso-canal">
+                <option value="Processos">Processos</option>
+                <option value="Avisos">Avisos</option>
+              </select>
 
-          <label for="aviso-titulo">Título ou resumo</label>
-          <input
-            id="aviso-titulo"
-            type="text"
-            placeholder="Ex: Novo procedimento de atendimento"
-          />
+              <label for="aviso-titulo">Título ou resumo</label>
+              <input
+                id="aviso-titulo"
+                type="text"
+                placeholder="Ex: Novo procedimento de atendimento"
+              />
 
-          <label for="aviso-msg">Mensagem privada</label>
-          <textarea id="aviso-msg" rows="5">Foi publicado um novo aviso no canal informado. Por favor, leia e marque o visto de lido.</textarea>
+              <label for="aviso-msg">Mensagem privada</label>
+              <textarea id="aviso-msg" rows="5">Foi publicado um novo aviso no canal informado. Por favor, leia e marque o visto de lido.</textarea>
 
-          <label>Enviar para</label>
-          <div class="check-grid" role="radiogroup" aria-label="Grupo destinatário">
-            <label>
-              <input type="radio" name="grupo-aviso" value="todos" checked /> Todos
-            </label>
-            <label>
-              <input type="radio" name="grupo-aviso" value="Técnicos" /> Técnicos
-            </label>
-            <label>
-              <input type="radio" name="grupo-aviso" value="Gestão Pit Stop" /> Gestão Pit Stop
-            </label>
+              <label>Enviar para</label>
+              <div class="check-grid" role="radiogroup" aria-label="Grupo destinatário">
+                <label>
+                  <input type="radio" name="grupo-aviso" value="todos" checked /> Todos
+                </label>
+                <label>
+                  <input type="radio" name="grupo-aviso" value="Técnicos" /> Técnicos
+                </label>
+                <label>
+                  <input type="radio" name="grupo-aviso" value="Gestão Pit Stop" /> Gestão Pit Stop
+                </label>
+              </div>
+
+              <button class="btn btn-discord" id="btn-send-aviso" type="button">
+                📢 Disparar aviso individual
+              </button>
+            </div>
+
+            <div class="card form-card">
+              <h2>Feedback privado</h2>
+              <p class="muted" style="margin-bottom:14px">
+                O feedback fica privado para o colaborador destinatário e aparece no portal com sino, badge e popup em tempo real.
+              </p>
+
+              <label for="feedback-colaborador">Colaborador</label>
+              <select id="feedback-colaborador">
+                <option value="">Carregando colaboradores...</option>
+              </select>
+
+              <label for="feedback-titulo">Título do feedback</label>
+              <input id="feedback-titulo" type="text" placeholder="Ex: Atendimento excelente no turno da tarde" />
+
+              <label for="feedback-mensagem">Mensagem do feedback</label>
+              <textarea id="feedback-mensagem" rows="5" placeholder="Escreva o feedback individual..."></textarea>
+
+              <button class="btn btn-gold" id="btn-send-feedback" type="button">
+                🔒 Enviar feedback privado
+              </button>
+            </div>
           </div>
 
-          <button class="btn btn-discord" id="btn-send-aviso" type="button">
-            📢 Disparar aviso individual
-          </button>
+          <!-- Coluna direita: histórico de avisos -->
+          <div class="avisos-col-historico">
+            <div class="card" style="height:100%;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                <h2 style="margin:0;">📋 Últimos avisos enviados</h2>
+                <button class="btn btn-small" id="btn-clear-avisos-hist" type="button" style="color:var(--red);font-size:11px;">Limpar</button>
+              </div>
+              <div id="avisos-historico-list">
+                <div class="empty-state empty-state-compact">
+                  <div class="empty-icon">📢</div>
+                  <strong>Nenhum aviso enviado ainda</strong>
+                  <small>Os avisos disparados aparecerão aqui</small>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div class="card form-card">
-          <h2>Feedback privado</h2>
-          <p class="muted" style="margin-bottom:14px">
-            O feedback fica privado para o colaborador destinatário e aparece no portal com sino, badge e popup em tempo real.
-          </p>
-
-<label for="feedback-colaborador">Colaborador</label>
-<select id="feedback-colaborador">
-  <option value="">Carregando colaboradores...</option>
-</select>
-
-<label for="feedback-titulo">Título do feedback</label>
-<input id="feedback-titulo" type="text" placeholder="Ex: Atendimento excelente no turno da tarde" />
-
-<label for="feedback-mensagem">Mensagem do feedback</label>
-<textarea id="feedback-mensagem" rows="5" placeholder="Escreva o feedback individual..."></textarea>
-
-<button class="btn btn-gold" id="btn-send-feedback" type="button">
-  🔒 Enviar feedback privado
-</button>
-        </div>
-
       </section>
 
       <!-- Aniversários -->
@@ -950,7 +998,6 @@
     <script src="gestao-pitstop.js"></script>
     <script src="gestao-pev.js"></script>
     <script src="gestao-pev-importacoes.js"></script>
-    <script src="dashboard-charts.js"></script>
 
     <!-- Dropdown customizado de colaboradores no modal de folga -->
     <script>
