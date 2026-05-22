@@ -514,52 +514,98 @@ function PEV_saveColab() {
   PEV_renderAlmocoList();
 }
 
-/* ── Discord ─────────────────────────────────────────────── */
+/* ── Discord / Hermes ────────────────────────────────────── */
+async function PEV_sendHermes(tipo, payload) {
+  if (typeof sendHermes === 'function') {
+    return sendHermes(tipo, payload);
+  }
+
+  const response = await fetch('/api/hermes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipo, ...payload }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || data.details || `HTTP ${response.status}`);
+  }
+  return data;
+}
+
 async function PEV_sendDiscord(tipo) {
-  const cfg = JSON.parse(localStorage.getItem('pev_discord_config') || '{}');
-  const webhook = tipo === 'escala' ? cfg.escalaWebhook : cfg.almocoWebhook;
-  if (!webhook) { alert('Configure o webhook do Discord primeiro.'); return; }
   const out = tipo === 'escala' ? document.getElementById('pev-escala-output') : document.getElementById('pev-almoco-output');
   const content = out?.textContent?.trim();
-  if (!content || content.startsWith('Configure') || content.startsWith('Marque')) { alert('Gere a mensagem antes de enviar.'); return; }
-  const botname = cfg.botname || 'Hermes PEV';
+
+  if (!content || content.startsWith('Configure') || content.startsWith('Marque')) {
+    alert('Gere a mensagem antes de enviar.');
+    return;
+  }
+
+  const btn = tipo === 'escala'
+    ? document.getElementById('pev-btn-send-escala')
+    : document.getElementById('pev-btn-send-almoco');
+
+  const originalText = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Enviando...';
+  }
+
   try {
-    const r = await fetch(webhook, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({username: botname, content})
+    await PEV_sendHermes(tipo === 'escala' ? 'pev-escala' : 'pev-almoco', {
+      mensagem: content,
+      content,
+      data: PEV_currentDate,
+      setor: 'PEV',
+      origem: 'gestao-pev',
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    if (typeof toast === 'function') toast('✅ Mensagem PEV enviada no Discord!');
-  } catch(e) { alert('Erro ao enviar: ' + e.message); }
+
+    if (typeof toast === 'function') toast('✅ Mensagem PEV enviada pelo Hermes!');
+  } catch(e) {
+    alert('Erro ao enviar pelo Hermes: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
 }
 
 function PEV_openDiscordConfig() {
-  const cfg = JSON.parse(localStorage.getItem('pev_discord_config') || '{}');
-  document.getElementById('pev-webhook-escala').value  = cfg.escalaWebhook || '';
-  document.getElementById('pev-webhook-almoco').value  = cfg.almocoWebhook || '';
-  document.getElementById('pev-webhook-botname').value = cfg.botname || 'Hermes PEV';
+  const res = document.getElementById('pev-discord-test-result');
+  if (res) {
+    res.style.display = 'block';
+    res.style.background = 'rgba(88,101,242,.08)';
+    res.textContent = 'Os envios do PEV agora usam o Hermes via /api/hermes. Não é necessário configurar webhook nesta tela.';
+  }
   PEV_openModal('pev-modal-discord');
 }
 function PEV_saveDiscordConfig() {
-  const cfg = {
-    escalaWebhook: document.getElementById('pev-webhook-escala').value.trim(),
-    almocoWebhook: document.getElementById('pev-webhook-almoco').value.trim(),
-    botname: document.getElementById('pev-webhook-botname').value.trim() || 'Hermes PEV',
-  };
-  localStorage.setItem('pev_discord_config', JSON.stringify(cfg));
   PEV_closeModal('pev-modal-discord');
-  if (typeof toast === 'function') toast('✅ Config Discord PEV salva.');
+  if (typeof toast === 'function') toast('✅ PEV configurado para envio via Hermes.');
 }
 async function PEV_testDiscord() {
-  const webhook = document.getElementById('pev-webhook-escala').value.trim();
   const res = document.getElementById('pev-discord-test-result');
-  if (!webhook) { alert('Insira o webhook de escala para testar.'); return; }
-  res.style.display = 'block'; res.style.background = 'rgba(240,180,41,.08)'; res.textContent = 'Testando...';
+  if (res) {
+    res.style.display = 'block';
+    res.style.background = 'rgba(240,180,41,.08)';
+    res.textContent = 'Testando conexão com Hermes...';
+  }
   try {
-    const r = await fetch(webhook, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'Hermes PEV',content:'🔌 Teste de conexão PEV — OK!'})});
-    res.style.background = r.ok ? 'rgba(61,214,140,.08)' : 'rgba(248,113,113,.08)';
-    res.textContent = r.ok ? '✅ Webhook funcionando!' : `❌ Erro HTTP ${r.status}`;
-  } catch(e) { res.style.background='rgba(248,113,113,.08)'; res.textContent='❌ Erro: '+e.message; }
+    await PEV_sendHermes('health-check', {});
+    if (res) {
+      res.style.background = 'rgba(61,214,140,.08)';
+      res.textContent = '✅ Hermes conectado!';
+    }
+  } catch(e) {
+    if (res) {
+      res.style.background = 'rgba(248,113,113,.08)';
+      res.textContent = '❌ Erro: ' + e.message;
+    } else {
+      alert('Erro: ' + e.message);
+    }
+  }
 }
 
 /* ── Modal utils ─────────────────────────────────────────── */
