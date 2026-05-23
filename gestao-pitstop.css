@@ -5031,3 +5031,437 @@ nav {
 .folga-cal-title {
   font-size: 14px;
 }
+
+
+
+/* ==========================================================================
+   PAUSA ROW — Redesign v2 FINAL
+   Sobrescreve regras legadas com especificidade explícita
+   ========================================================================== */
+
+/* ── 1. Containers sem overflow hidden (necessário para dropdown de flags) ── */
+.pausas-wrap { overflow: visible !important; }
+.pausa-turno { overflow: visible; }
+.pausa-turno-list { overflow: visible; }
+.card.pausas-wrap { overflow: visible !important; }
+
+/* ── 2. Reset completo do pausa-row para os dois tipos ── */
+.pausa-row.pausa-row--tecnico,
+.pausa-row.pausa-row--gestao {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  overflow: visible !important;
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: border-color 0.15s, border-left-color 0.15s, background 0.15s, opacity 0.2s;
+  min-height: 52px;
+}
+
+/* ── 3. pr-body: linha única com três zonas ── */
+.pausa-row--tecnico .pr-body,
+.pausa-row--gestao .pr-body {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-height: 52px;
+}
+
+/* ── 4. ZONA 1 · Nome — largura fixa, borda direita ── */
+.pausa-row--tecnico .pausa-nome,
+.pausa-row--gestao .pausa-nome {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px;
+  padding: 10px 14px !important;
+  width: 205px !important;
+  min-width: 205px !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  border-right: 1px solid var(--border) !important;
+  align-self: stretch;
+}
+
+/* Avatar novo */
+.pr-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  font-family: "DM Sans", sans-serif;
+}
+.pr-avatar--tecnico {
+  background: var(--surface3);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.pr-avatar--gestao {
+  background: rgba(245,200,66,0.14);
+  color: var(--gold);
+  border: 1px solid rgba(245,200,66,0.3);
+}
+
+/* Conteúdo do nome */
+.pr-nome-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.pr-nome-linha1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.pr-nome-texto {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+.pr-nome-linha2 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* ── 5. ZONA 2 · Horários — flex:1, sem wrap, sem overflow hidden ── */
+.pr-times {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  flex: 1 !important;
+  gap: 6px;
+  padding: 0 14px !important;
+  min-width: 0;
+  overflow: visible !important;
+}
+.pr-times.pr-times--hidden {
+  display: none !important;
+}
+
+/* Override pausa-fields dentro do pr-times */
+.pausa-row--tecnico .pr-times .pausa-fields,
+.pausa-row--gestao .pr-times .pausa-fields {
+  display: contents !important; /* explode os filhos diretamente no flex pai */
+}
+
+/* Inputs compactos */
+.pausa-row--tecnico .pausa-field input[type="time"],
+.pausa-row--gestao .pausa-field input[type="time"] {
+  width: 82px !important;
+  height: 32px !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  padding: 0 6px !important;
+  border-radius: 7px !important;
+  text-align: center;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  transition: border-color 0.12s, background 0.12s;
+}
+.pausa-row--tecnico .pausa-field input[type="time"]:focus,
+.pausa-row--gestao .pausa-field input[type="time"]:focus {
+  border-color: rgba(245,200,66,0.5) !important;
+  background: rgba(245,200,66,0.04) !important;
+  outline: none;
+}
+
+/* Labels e dividers */
+.pausa-row--tecnico .pausa-field label,
+.pausa-row--gestao .pausa-field label {
+  font-size: 9px !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.65;
+  text-align: center;
+}
+.pausa-row--tecnico .pausa-divider,
+.pausa-row--gestao .pausa-divider {
+  margin-top: 14px !important;
+  font-size: 11px;
+  color: var(--border);
+  opacity: 1;
+  flex-shrink: 0;
+}
+
+/* Pill almoço gestão */
+.pausa-row--gestao .pausa-pill-almoco {
+  margin-top: 14px;
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(245,200,66,0.1);
+  color: var(--gold);
+  border: 1px solid rgba(245,200,66,0.22);
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── 6. ZONA 3 · Flags ── */
+.pr-flags {
+  flex-shrink: 0 !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  border-left: 1px solid var(--border) !important;
+  align-self: stretch;
+  z-index: 10;
+}
+
+/* Gestão: flags sempre visíveis em painel lateral */
+.pr-flags.pr-flags--gestao {
+  padding: 8px 12px;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-content: center;
+  min-width: 190px;
+  max-width: 260px;
+  border-left-color: rgba(245,200,66,0.14) !important;
+}
+
+/* Técnico: trigger + dropdown */
+.pr-flags.pr-flags--tecnico {
+  padding: 0;
+}
+
+.pr-flags-trigger {
+  height: 100% !important;
+  min-height: 52px;
+  padding: 0 16px !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  font-family: "DM Sans", sans-serif;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+  border-radius: 0 10px 10px 0;
+}
+.pr-flags-trigger:hover {
+  color: var(--text);
+  background: var(--surface3) !important;
+}
+.pr-flags--has-active .pr-flags-trigger {
+  color: var(--gold);
+}
+.pr-flags-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+
+/* Dropdown de flags */
+.pr-flags-panel {
+  display: none;
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  right: 0 !important;
+  left: auto !important;
+  z-index: 200 !important;
+  background: var(--surface) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15), 0 12px 32px rgba(0,0,0,0.3) !important;
+  min-width: 280px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.pr-flags--open .pr-flags-panel {
+  display: flex !important;
+}
+
+/* ── 7. Neutraliza pausa-flags legado dentro dos novos cards ── */
+.pausa-row--tecnico .pausa-flags,
+.pausa-row--gestao .pausa-flags {
+  display: none !important;
+}
+/* Exceto o pr-flags que é novo */
+.pausa-row--tecnico .pr-flags,
+.pausa-row--gestao .pr-flags {
+  display: flex !important;
+}
+
+/* ── 8. Identidade visual dos grupos ── */
+/* Gestão */
+.pausa-row.pausa-row--gestao {
+  background: rgba(245,200,66,0.035) !important;
+  border-color: rgba(245,200,66,0.16) !important;
+  border-left-color: rgba(245,200,66,0.5) !important;
+}
+.pausa-row.pausa-row--gestao:hover {
+  background: rgba(245,200,66,0.055) !important;
+  border-color: rgba(245,200,66,0.28) !important;
+}
+
+/* Status borders — técnico */
+.pausa-row--tecnico.status-ferias    { border-left-color: #4ade80 !important; }
+.pausa-row--tecnico.status-atestado  { border-left-color: var(--red) !important; }
+.pausa-row--tecnico.status-off       { border-left-color: #475569 !important; }
+.pausa-row--tecnico.status-atraso    { border-left-color: #f87171 !important; }
+.pausa-row--tecnico.status-saida-ant { border-left-color: #fbbf24 !important; }
+.pausa-row--tecnico.status-rodizio   { border-left-color: #a78bfa !important; }
+.pausa-row--tecnico.status-chat      { border-left-color: #60a5fa !important; }
+
+/* ── 9. Botões de ação inline no nome ── */
+.pausa-row--tecnico .btn-send-pausa-individual,
+.pausa-row--gestao .btn-send-pausa-individual {
+  height: 20px !important;
+  font-size: 9.5px !important;
+  padding: 0 7px !important;
+  border-radius: 6px !important;
+}
+.pausa-row--tecnico .btn-ocultar-hoje,
+.pausa-row--gestao .btn-ocultar-hoje,
+.pausa-row--tecnico .btn-restaurar-js,
+.pausa-row--gestao .btn-restaurar-js {
+  height: 18px !important;
+  font-size: 8.5px !important;
+  padding: 0 6px !important;
+}
+
+/* Botão MSG inline */
+.pausa-row--tecnico .btn-msg-rapida-js,
+.pausa-row--gestao .btn-msg-rapida-js {
+  height: 20px !important;
+  font-size: 9px !important;
+  padding: 0 7px !important;
+}
+
+/* ── 10. Chips de flag menores ── */
+.pausa-row--tecnico .flag-chip,
+.pausa-row--gestao .flag-chip {
+  font-size: 8px !important;
+  padding: 1px 5px !important;
+  height: 15px !important;
+  line-height: 1;
+}
+
+/* ── 11. Badge cargo: desnecessário (avatar já diferencia) ── */
+.pausa-row--tecnico .cargo-badge,
+.pausa-row--gestao .cargo-badge {
+  display: none !important;
+}
+
+/* ── 12. Campo atraso: dentro do pr-nome-info ── */
+.pausa-row--tecnico .atraso-field,
+.pausa-row--gestao .atraso-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.pausa-row--tecnico .atraso-field input,
+.pausa-row--gestao .atraso-field input {
+  width: 52px !important;
+  height: 24px !important;
+  border-radius: 6px;
+  font-size: 11px !important;
+}
+
+/* ── 13. OFF: horários esmaecidos ── */
+.pausa-row--tecnico.flag-off .pr-times,
+.pausa-row--gestao.flag-off .pr-times {
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* ── 14. Chat: oculta zona de horários, mostra placeholder ── */
+.pausa-row--tecnico.flag-chat .pr-times,
+.pausa-row--gestao.flag-chat .pr-times {
+  display: flex !important;
+  align-items: center;
+  padding: 0 16px !important;
+}
+
+/* ── 15. Labels de grupo Gestão / Técnicos ── */
+.pausa-group-label {
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 10px 4px 4px;
+  margin-top: 4px;
+}
+.pausa-group-label:first-child { margin-top: 0; padding-top: 2px; }
+.pausa-group-label--gestao { color: var(--gold); opacity: 0.85; }
+.pausa-group-label--tecnico { color: var(--muted); opacity: 0.6; }
+
+/* ── 16. Responsivo ── */
+@media (max-width: 780px) {
+  .pausa-row--tecnico .pr-body,
+  .pausa-row--gestao .pr-body {
+    flex-wrap: wrap !important;
+    padding: 10px 12px !important;
+  }
+  .pausa-row--tecnico .pausa-nome,
+  .pausa-row--gestao .pausa-nome {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding-bottom: 8px !important;
+  }
+  .pr-times {
+    padding: 8px 0 !important;
+    width: 100%;
+    flex-wrap: wrap !important;
+    overflow: hidden !important;
+  }
+  .pr-flags.pr-flags--tecnico {
+    border-left: none !important;
+    padding: 4px 0 !important;
+  }
+  .pr-flags-trigger {
+    min-height: 32px !important;
+    height: 32px !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+  }
+  .pr-flags-panel {
+    right: auto !important;
+    left: 0 !important;
+  }
+  .pr-flags.pr-flags--gestao {
+    border-left: none !important;
+    border-top: 1px solid rgba(245,200,66,0.14) !important;
+    width: 100%;
+    max-width: 100% !important;
+    padding: 8px 0 0 !important;
+  }
+}

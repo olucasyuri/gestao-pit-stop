@@ -1416,7 +1416,7 @@ function buildPausaRow(colab) {
   const isGestao = colab.cargo === "Gestão Pit Stop";
   const nomeSeguro = escapeHtml(nome);
   const row = document.createElement("div");
-  row.className = "pausa-row";
+  row.className = isGestao ? "pausa-row pausa-row--gestao" : "pausa-row pausa-row--tecnico";
 
   // Classes da row de acordo com flags ativas
   if (f.off)  row.classList.add("flag-off");
@@ -1512,14 +1512,13 @@ function buildPausaRow(colab) {
 
   const nomeCell = `
     <div class="pausa-nome">
-      <div class="avatar" style="width:34px;height:34px;font-size:12px;flex-shrink:0;">${initials(nome)}</div>
-      <div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-          <strong>${nomeSeguro}</strong>
+      <div class="pr-avatar pr-avatar--${isGestao ? "gestao" : "tecnico"}">${initials(nome)}</div>
+      <div class="pr-nome-info">
+        <div class="pr-nome-linha1">
+          <span class="pr-nome-texto">${nomeSeguro}</span>
           ${activeChips}
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
-          <span class="cargo-badge ${isGestao ? "gestao" : "tecnico"}">${isGestao ? "Gestão" : "Técnico"}</span>
+        <div class="pr-nome-linha2">
           ${btnIndividualHtml}
           ${btnOcultarHtml}
         </div>
@@ -1562,12 +1561,28 @@ function buildPausaRow(colab) {
       </div>`;
   }
 
+  // Flags: gestão sempre visível (poucos campos), técnico com toggle compacto
+  const hasActiveFlag = Object.values(f).some(v => v === true);
+
+  const flagsDrawer = isGestao
+    ? `<div class="pr-flags pr-flags--gestao">${flagBtnsHtml}</div>`
+    : `<div class="pr-flags pr-flags--tecnico${hasActiveFlag ? " pr-flags--has-active" : ""}" data-flags-panel>
+         <button type="button" class="pr-flags-trigger btn-flags-toggle-js">
+           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+           Status
+           ${hasActiveFlag ? '<span class="pr-flags-dot"></span>' : ''}
+         </button>
+         <div class="pr-flags-panel">${flagBtnsHtml}</div>
+       </div>`;
+
   row.innerHTML = `
-    <div class="pausa-row-top">
+    <div class="pr-body">
       ${nomeCell}
-      ${f.chat ? "" : fieldsHtml}
+      <div class="pr-times${f.chat ? " pr-times--hidden" : ""}">
+        ${f.chat ? "" : fieldsHtml}
+      </div>
+      ${flagsDrawer}
     </div>
-    <div class="pausa-flags">${flagBtnsHtml}</div>
   `;
 
   // ── Vincular eventos via addEventListener (sem onclick inline, sem problema de aspas) ──
@@ -1629,6 +1644,15 @@ function buildPausaRow(colab) {
       renderDash();
       renderOffSugestoes();
       toast(`${nome} restaurado(a) na escala.`);
+    });
+  }
+
+  // Toggle de flags colapsáveis (técnicos)
+  const btnFlagsToggle = row.querySelector('.btn-flags-toggle-js');
+  if (btnFlagsToggle) {
+    btnFlagsToggle.addEventListener('click', () => {
+      const panel = row.querySelector('[data-flags-panel]');
+      if (panel) panel.classList.toggle('pr-flags--open');
     });
   }
 
@@ -1746,7 +1770,23 @@ function renderPausas() {
 
     const lista = section.querySelector(".pausa-turno-list");
     if (colabsTurno.length) {
-      colabsTurno.forEach((colab) => lista.appendChild(buildPausaRow(colab)));
+      // Separa gestão de técnicos e insere label divisório
+      const gestaoColabs = colabsTurno.filter(c => c.cargo === "Gestão Pit Stop");
+      const tecnicoColabs = colabsTurno.filter(c => c.cargo !== "Gestão Pit Stop");
+      if (gestaoColabs.length) {
+        const labelGestao = document.createElement("div");
+        labelGestao.className = "pausa-group-label pausa-group-label--gestao";
+        labelGestao.textContent = "Gestão";
+        lista.appendChild(labelGestao);
+        gestaoColabs.forEach(colab => lista.appendChild(buildPausaRow(colab)));
+      }
+      if (tecnicoColabs.length) {
+        const labelTecnico = document.createElement("div");
+        labelTecnico.className = "pausa-group-label pausa-group-label--tecnico";
+        labelTecnico.textContent = "Técnicos";
+        lista.appendChild(labelTecnico);
+        tecnicoColabs.forEach(colab => lista.appendChild(buildPausaRow(colab)));
+      }
     } else {
       lista.innerHTML = `<div class="empty-state empty-state-compact"><strong>Nenhum colaborador neste turno</strong></div>`;
     }
@@ -4257,4 +4297,11 @@ document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     if (tab === 'pendencias') setTimeout(() => { if(window.renderPendencias) window.renderPendencias(); }, 100);
     if (tab === 'aniversarios') setTimeout(() => { if(typeof renderAniversarios === 'function') renderAniversarios(); }, 100);
   });
+});
+
+/* ── Fechar dropdown de flags ao clicar fora ── */
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-flags-panel]') && !e.target.closest('.btn-flags-toggle-js')) {
+    document.querySelectorAll('.pr-flags--open').forEach(el => el.classList.remove('pr-flags--open'));
+  }
 });
