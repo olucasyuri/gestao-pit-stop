@@ -562,3 +562,59 @@
     align-items: flex-start;
   }
 }
+
+/* ------------------------------------------------------------------
+   v2 — Input de rótulo de coluna (linha 3 do cabeçalho editável)
+------------------------------------------------------------------ */
+.fds-col-label-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  width: 100%;
+  border-radius: 5px;
+  transition: background 0.12s;
+}
+
+.fds-col-label-input:focus {
+  background: rgba(245, 200, 66, 0.12);
+  color: var(--gold);
+}
+
+.fds-col-label-input::placeholder {
+  color: rgba(151, 148, 168, 0.4);
+  font-weight: 500;
+  text-transform: none;
+}
+
+/* Botão "Consultar" no cabeçalho da aba FDS */
+.fds-btn-consultar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.fds-btn-consultar:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* Fade suave no indicador de sync */
+#fds-sync-status {
+  transition: opacity 0.4s ease;
+}

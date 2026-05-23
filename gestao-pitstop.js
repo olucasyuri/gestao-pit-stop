@@ -1566,13 +1566,13 @@ function buildPausaRow(colab) {
 
   const flagsDrawer = isGestao
     ? `<div class="pr-flags pr-flags--gestao">${flagBtnsHtml}</div>`
-    : `<div class="pr-flags pr-flags--tecnico${hasActiveFlag ? " pr-flags--has-active" : ""}" data-flags-panel>
-         <button type="button" class="pr-flags-trigger btn-flags-toggle-js">
+    : `<div class="pr-flags pr-flags--tecnico${hasActiveFlag ? " pr-flags--has-active" : ""}">
+         <button type="button" class="pr-flags-trigger btn-flags-toggle-js" data-flags-trigger>
            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
            Status
            ${hasActiveFlag ? '<span class="pr-flags-dot"></span>' : ''}
          </button>
-         <div class="pr-flags-panel">${flagBtnsHtml}</div>
+         <div class="pr-flags-panel" data-flags-panel>${flagBtnsHtml}</div>
        </div>`;
 
   row.innerHTML = `
@@ -1650,9 +1650,30 @@ function buildPausaRow(colab) {
   // Toggle de flags colapsáveis (técnicos)
   const btnFlagsToggle = row.querySelector('.btn-flags-toggle-js');
   if (btnFlagsToggle) {
-    btnFlagsToggle.addEventListener('click', () => {
-      const panel = row.querySelector('[data-flags-panel]');
-      if (panel) panel.classList.toggle('pr-flags--open');
+    btnFlagsToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wrapper = row.querySelector('.pr-flags--tecnico');
+      const panel   = row.querySelector('[data-flags-panel]');
+      const jaAberto = wrapper && wrapper.classList.contains('pr-flags--open');
+
+      // Fecha todos os outros dropdowns de status abertos
+      document.querySelectorAll('.pr-flags--tecnico.pr-flags--open').forEach(w => {
+        w.classList.remove('pr-flags--open');
+        w.querySelector('[data-flags-trigger]')?.setAttribute('aria-expanded', 'false');
+      });
+
+      // Se nao estava aberto, abre este e posiciona o panel (fixed)
+      if (!jaAberto && wrapper && panel) {
+        // Calcula posição relativa ao botão trigger
+        const rect = btnFlagsToggle.getBoundingClientRect();
+        const panelW = 290; // min-width do panel
+        let left = rect.right - panelW;
+        if (left < 8) left = 8;
+        panel.style.top  = (rect.bottom + 6) + 'px';
+        panel.style.left = left + 'px';
+        wrapper.classList.add('pr-flags--open');
+        btnFlagsToggle.setAttribute('aria-expanded', 'true');
+      }
     });
   }
 
@@ -3523,6 +3544,24 @@ function buildPausaSlotHtml(slot, nome) {
     </div>`;
 }
 
+// Fecha dropdown de status ao clicar fora ou pressionar Escape
+document.addEventListener("click", (e) => {
+  if (!e.target.closest('.pr-flags--tecnico')) {
+    document.querySelectorAll('.pr-flags--tecnico.pr-flags--open').forEach(w => {
+      w.classList.remove('pr-flags--open');
+      w.querySelector('[data-flags-trigger]')?.setAttribute('aria-expanded', 'false');
+    });
+  }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.querySelectorAll('.pr-flags--tecnico.pr-flags--open').forEach(w => {
+      w.classList.remove('pr-flags--open');
+      w.querySelector('[data-flags-trigger]')?.setAttribute('aria-expanded', 'false');
+    });
+  }
+});
+
 // Delegação global de eventos para botões de status de pausa
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest("[data-ps-nome][data-ps-campo][data-ps-status]");
@@ -3763,6 +3802,195 @@ function garantirModalPausaAtrasada() {
     }
   `;
   document.head.appendChild(style);
+})();
+
+/* ── CSS: Dashboard Folgas & Férias visual ── */
+(function injetarCSSDFF() {
+  if (document.getElementById('css-dff')) return;
+  const s = document.createElement('style');
+  s.id = 'css-dff';
+  s.textContent = `
+    /* Card ocupa 2 colunas no grid */
+    .dff-card { grid-column: 1 / -1; }
+
+    /* KPIs compactos */
+    .dff-kpis {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 10px 16px;
+      margin-bottom: 16px;
+    }
+    .dff-kpi {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .dff-kpi-num {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+      font-family: "Outfit", sans-serif;
+    }
+    .dff-kpi-lbl {
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.38);
+      font-weight: 500;
+    }
+    .dff-kpi-sep {
+      width: 1px;
+      height: 36px;
+      background: rgba(255,255,255,0.08);
+      margin: 0 4px;
+    }
+
+    /* Layout das duas seções lado a lado */
+    .dff-body {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .dff-body { grid-template-columns: 1fr; } }
+
+    /* Título de seção interno */
+    .dff-bars-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 10px;
+    }
+
+    /* Barras mensais */
+    .dff-bars-section { margin-bottom: 16px; }
+    .dff-bars-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      height: 80px;
+      margin-bottom: 6px;
+    }
+    .dff-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .dff-bar-col.dff-bar-current .dff-bar-label {
+      color: rgba(255,255,255,0.75);
+      font-weight: 700;
+    }
+    .dff-bar-stack {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 1px;
+      flex: 1;
+    }
+    .dff-bar-seg {
+      width: 100%;
+      border-radius: 3px;
+      min-height: 3px;
+      transition: height .5s cubic-bezier(.4,0,.2,1);
+    }
+    .dff-seg-ferias { background: linear-gradient(180deg,#facc15,rgba(250,204,21,.5)); border-radius: 4px 4px 0 0; }
+    .dff-seg-folgas { background: linear-gradient(180deg,#63beff,rgba(99,190,255,.5)); border-radius: 0 0 4px 4px; }
+    .dff-bar-nums {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .dff-num-ferias { color: #facc15; }
+    .dff-num-folgas { color: #63beff; }
+    .dff-num-zero   { color: rgba(255,255,255,0.18); }
+    .dff-bar-label {
+      font-size: 10px;
+      color: rgba(255,255,255,0.38);
+      font-weight: 600;
+    }
+
+    /* Legenda */
+    .dff-legend-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.38);
+    }
+    .dff-legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dff-legend-txt { margin-right: 2px; }
+
+    /* Heatmap */
+    .dff-heatmap-section { flex: 1; }
+    .dff-heatmap {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-bottom: 6px;
+    }
+    .dff-heatmap-labels {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      margin-bottom: 2px;
+    }
+    .dff-heatmap-labels span {
+      text-align: center;
+      font-size: 9px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: .04em;
+    }
+    .dff-heatmap-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+    .dff-cell {
+      aspect-ratio: 1;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: default;
+      transition: transform .15s, opacity .15s;
+      position: relative;
+      min-width: 0;
+    }
+    .dff-cell:hover { transform: scale(1.18); z-index: 2; opacity: .9; }
+    .dff-cell.dff-today {
+      outline: 2px solid rgba(255,255,255,0.55);
+      outline-offset: -1px;
+    }
+    .dff-cell-day {
+      font-size: 8px;
+      color: rgba(255,255,255,0.28);
+      font-weight: 600;
+      line-height: 1;
+      pointer-events: none;
+    }
+  `;
+  document.head.appendChild(s);
 })();
 
 /* =====================================================================
@@ -4083,6 +4311,215 @@ window.renderFolgas = function() {
     else dashPage.appendChild(section);
   }
 
+  /* ── Folgas & Férias — card visual 3 meses ── */
+  function buildFolgasFeriasCard(todasFolgas) {
+    const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const hoje = new Date();
+    const todayISO = hoje.toISOString().slice(0,10);
+
+    // Gera os últimos 3 meses + mês atual (total 3 meses)
+    const meses = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      meses.push({ ano: d.getFullYear(), mes: d.getMonth(), label: MESES_PT[d.getMonth()] });
+    }
+
+    // Para cada mês, calcula total de folgas e férias por dia
+    // Monta um heatmap semanal: linhas = semanas, colunas = dias da semana (Seg~Dom)
+    const DIAS_LABEL = ['S','T','Q','Q','S','S','D'];
+
+    function diasDoMes(ano, mes) {
+      const dias = [];
+      const d = new Date(ano, mes, 1);
+      while (d.getMonth() === mes) {
+        dias.push(new Date(d));
+        d.setDate(d.getDate() + 1);
+      }
+      return dias;
+    }
+
+    function iso(d) { return d.toISOString().slice(0,10); }
+
+    // Pré-indexa folgas por dia
+    const folgasPorDia = {};  // iso -> { folgas: n, ferias: n }
+    (todasFolgas || []).forEach(f => {
+      const info = typeof getFolgaInfo === 'function' ? getFolgaInfo(f) : null;
+      if (!info) return;
+      if (info.tipo === 'ferias') {
+        // Expande o período
+        const ini = new Date(info.dataInicio + 'T00:00:00');
+        const fim = new Date((info.dataFim || info.dataInicio) + 'T00:00:00');
+        const cur = new Date(ini);
+        while (cur <= fim) {
+          const k = iso(cur);
+          if (!folgasPorDia[k]) folgasPorDia[k] = { folgas: 0, ferias: 0 };
+          folgasPorDia[k].ferias++;
+          cur.setDate(cur.getDate() + 1);
+        }
+      } else {
+        const k = info.dataInicio;
+        if (!folgasPorDia[k]) folgasPorDia[k] = { folgas: 0, ferias: 0 };
+        folgasPorDia[k].folgas++;
+      }
+    });
+
+    // Totais por mês
+    const totaisMes = meses.map(m => {
+      let tF = 0, tFer = 0;
+      diasDoMes(m.ano, m.mes).forEach(d => {
+        const k = iso(d);
+        if (folgasPorDia[k]) { tF += folgasPorDia[k].folgas; tFer += folgasPorDia[k].ferias; }
+      });
+      return { ...m, folgas: tF, ferias: tFer };
+    });
+
+    const maxBarVal = Math.max(...totaisMes.map(m => m.folgas + m.ferias), 1);
+
+    // Heatmap do mês atual
+    const mesAtual = meses[meses.length - 1];
+    const diasMesAtual = diasDoMes(mesAtual.ano, mesAtual.mes);
+    // Organiza em semanas (linha por semana, dom=0 → índice 6, seg=1 → 0)
+    // usamos seg=0..dom=6
+    const semanas = [];
+    let semana = new Array(7).fill(null);
+    diasMesAtual.forEach(d => {
+      const dow = (d.getDay() + 6) % 7; // 0=seg, 6=dom
+      semana[dow] = d;
+      if (dow === 6 || d.getDate() === diasMesAtual[diasMesAtual.length-1].getDate()) {
+        semanas.push([...semana]);
+        semana = new Array(7).fill(null);
+      }
+    });
+
+    const maxDiaVal = Math.max(...diasMesAtual.map(d => {
+      const k = iso(d);
+      return folgasPorDia[k] ? folgasPorDia[k].folgas + folgasPorDia[k].ferias : 0;
+    }), 1);
+
+    function cellColor(d) {
+      if (!d) return 'transparent';
+      const k = iso(d);
+      const v = folgasPorDia[k];
+      if (!v || (v.folgas + v.ferias === 0)) return 'rgba(255,255,255,0.04)';
+      const tot = v.folgas + v.ferias;
+      const intensity = Math.min(tot / maxDiaVal, 1);
+      if (v.ferias > v.folgas) {
+        // amarelo (férias)
+        const a = 0.15 + intensity * 0.75;
+        return `rgba(250,204,21,${a.toFixed(2)})`;
+      } else {
+        // azul (folgas)
+        const a = 0.15 + intensity * 0.75;
+        return `rgba(99,190,255,${a.toFixed(2)})`;
+      }
+    }
+
+    function cellTitle(d) {
+      if (!d) return '';
+      const k = iso(d);
+      const v = folgasPorDia[k];
+      if (!v) return k;
+      return `${k}: ${v.folgas} folga(s), ${v.ferias} férias`;
+    }
+
+    function isToday(d) { return d && iso(d) === todayISO; }
+
+    const heatmapHTML = `
+      <div class="dff-heatmap">
+        <div class="dff-heatmap-labels">
+          ${DIAS_LABEL.map(l => `<span>${l}</span>`).join('')}
+        </div>
+        ${semanas.map(sem => `
+          <div class="dff-heatmap-row">
+            ${sem.map(d => `
+              <div class="dff-cell${isToday(d) ? ' dff-today' : ''}"
+                style="background:${cellColor(d)};"
+                title="${cellTitle(d)}">
+                ${d ? `<span class="dff-cell-day">${d.getDate()}</span>` : ''}
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>`;
+
+    // Barras mensais empilhadas (folga + férias)
+    const barsHTML = totaisMes.map(m => {
+      const tot = m.folgas + m.ferias;
+      const pctFolga = tot > 0 ? Math.round((m.folgas / maxBarVal) * 100) : 0;
+      const pctFerias = tot > 0 ? Math.round((m.ferias / maxBarVal) * 100) : 0;
+      const isCurrent = m.mes === hoje.getMonth() && m.ano === hoje.getFullYear();
+      return `
+        <div class="dff-bar-col${isCurrent ? ' dff-bar-current' : ''}">
+          <div class="dff-bar-stack">
+            <div class="dff-bar-seg dff-seg-ferias" style="height:${pctFerias}%" title="Férias: ${m.ferias}"></div>
+            <div class="dff-bar-seg dff-seg-folgas" style="height:${pctFolga}%" title="Folgas: ${m.folgas}"></div>
+          </div>
+          <div class="dff-bar-nums">
+            ${m.ferias > 0 ? `<span class="dff-num-ferias">${m.ferias}</span>` : ''}
+            ${m.folgas > 0 ? `<span class="dff-num-folgas">${m.folgas}</span>` : ''}
+            ${tot === 0 ? `<span class="dff-num-zero">—</span>` : ''}
+          </div>
+          <span class="dff-bar-label">${m.label}</span>
+        </div>`;
+    }).join('');
+
+    const totalFolgas3m = totaisMes.reduce((s,m) => s + m.folgas, 0);
+    const totalFerias3m = totaisMes.reduce((s,m) => s + m.ferias, 0);
+    const folgasAtivas  = (todasFolgas||[]).filter(f => {
+      const info = typeof getFolgaInfo === 'function' ? getFolgaInfo(f) : null;
+      return info && info.tipo !== 'ferias' && (typeof isFolgaAtualOuFutura === 'function' ? isFolgaAtualOuFutura(f) : true);
+    }).length;
+    const feriasAtivas  = (todasFolgas||[]).filter(f => {
+      const info = typeof getFolgaInfo === 'function' ? getFolgaInfo(f) : null;
+      return info && info.tipo === 'ferias' && (typeof isFolgaAtualOuFutura === 'function' ? isFolgaAtualOuFutura(f) : true);
+    }).length;
+
+    return `
+      <div class="dash-chart-card dff-card">
+        <div class="dash-chart-title">🏖️ Folgas &amp; Férias — últimos 3 meses</div>
+
+        <!-- KPIs compactos -->
+        <div class="dff-kpis">
+          <div class="dff-kpi">
+            <span class="dff-kpi-num" style="color:#63beff">${folgasAtivas}</span>
+            <span class="dff-kpi-lbl">Folgas ativas</span>
+          </div>
+          <div class="dff-kpi-sep"></div>
+          <div class="dff-kpi">
+            <span class="dff-kpi-num" style="color:#facc15">${feriasAtivas}</span>
+            <span class="dff-kpi-lbl">Férias ativas</span>
+          </div>
+          <div class="dff-kpi-sep"></div>
+          <div class="dff-kpi">
+            <span class="dff-kpi-num" style="color:rgba(255,255,255,0.55)">${totalFolgas3m + totalFerias3m}</span>
+            <span class="dff-kpi-lbl">Total 3 meses</span>
+          </div>
+        </div>
+
+        <!-- Barras por mês + Heatmap lado a lado -->
+        <div class="dff-body">
+          <!-- Barras por mês -->
+          <div class="dff-bars-section">
+            <div class="dff-bars-title">Ocorrências por mês</div>
+            <div class="dff-bars-row">${barsHTML}</div>
+            <div class="dff-legend-row">
+              <span class="dff-legend-dot" style="background:#63beff"></span><span class="dff-legend-txt">Folgas</span>
+              <span class="dff-legend-dot" style="background:#facc15;margin-left:10px"></span><span class="dff-legend-txt">Férias</span>
+            </div>
+          </div>
+
+          <!-- Heatmap mês atual -->
+          <div class="dff-heatmap-section">
+            <div class="dff-bars-title">Mapa de calor — ${MESES_PT[mesAtual.mes]} ${mesAtual.ano}</div>
+            ${heatmapHTML}
+            <div class="dff-legend-row" style="margin-top:8px">
+              <span class="dff-legend-dot" style="background:rgba(99,190,255,0.7)"></span><span class="dff-legend-txt">Folga</span>
+              <span class="dff-legend-dot" style="background:rgba(250,204,21,0.7);margin-left:10px"></span><span class="dff-legend-txt">Férias</span>
+              <span class="dff-legend-dot" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);margin-left:10px"></span><span class="dff-legend-txt">Sem ausência</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function renderDashCharts() {
     const section = document.getElementById('dash-charts-section');
     if (!section) return;
@@ -4152,21 +4589,7 @@ window.renderFolgas = function() {
           }).join('')}
         </div>
       </div>
-      <div class="dash-chart-card">
-        <div class="dash-chart-title">🏖️ Folgas & Férias ativas</div>
-        <div class="dash-chart-canvas-wrap">
-          <svg viewBox="0 0 ${pieSize} ${pieSize}" width="${pieSize}" height="${pieSize}">
-            ${buildPieChart([
-              { val: folgasN, color: '#63beff', label: `Folgas (${folgasN})` },
-              { val: feriasN, color: '#facc15', label: `Férias (${feriasN})` },
-            ], pieSize)}
-          </svg>
-        </div>
-        <div class="dash-chart-legend">
-          <div class="dash-legend-item"><div class="dash-legend-dot" style="background:#63beff"></div>Folgas (${folgasN})</div>
-          <div class="dash-legend-item"><div class="dash-legend-dot" style="background:#facc15"></div>Férias (${feriasN})</div>
-        </div>
-      </div>
+      ${buildFolgasFeriasCard(folgas)}
     `;
   }
 
@@ -4297,11 +4720,4 @@ document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     if (tab === 'pendencias') setTimeout(() => { if(window.renderPendencias) window.renderPendencias(); }, 100);
     if (tab === 'aniversarios') setTimeout(() => { if(typeof renderAniversarios === 'function') renderAniversarios(); }, 100);
   });
-});
-
-/* ── Fechar dropdown de flags ao clicar fora ── */
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('[data-flags-panel]') && !e.target.closest('.btn-flags-toggle-js')) {
-    document.querySelectorAll('.pr-flags--open').forEach(el => el.classList.remove('pr-flags--open'));
-  }
 });
