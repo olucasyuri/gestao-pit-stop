@@ -1635,14 +1635,15 @@ function buildPausaRow(colab) {
   return row;
 }
 
-/** Renderiza o painel de ausencias ativas (OFF, Ferias, Atestado) acima dos cards. */
+/** Renderiza o painel de ausencias ativas (OFF, Atestado) acima dos cards.
+ *  Férias são gerenciadas na aba Férias e não aparecem aqui para evitar duplicidade. */
 function renderPainelAusencias() {
   const container = document.getElementById("ausencias-painel-container");
   if (!container) return;
 
   const ausentes = colaboradores.filter(c => {
     const f = getFlagDefault(c.nome);
-    return f.ferias || f.atestado || f.off;
+    return f.atestado || f.off; // ferias removidas daqui — use a aba Férias
   });
 
   if (!ausentes.length) {
@@ -4234,8 +4235,13 @@ function renderDashAniversariosImproved() {
 
     // Insert before the birthday-grid
     const bdayMain = document.querySelector('.bday-main-card');
-    if (bdayMain) bdayMain.parentNode.insertBefore(calDiv, bdayMain);
-    else list.parentNode.insertBefore(calDiv, list.parentNode.firstChild);
+    if (bdayMain) {
+      bdayMain.parentNode.insertBefore(calDiv, bdayMain);
+      // Oculta o grid de cards abaixo — o calendário já mostra tudo
+      bdayMain.style.display = 'none';
+    } else {
+      list.parentNode.insertBefore(calDiv, list.parentNode.firstChild);
+    }
   }
 
   setTimeout(renderAnivCalendar, 400);

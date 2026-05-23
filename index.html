@@ -145,6 +145,28 @@
         <div class="topbar-right">
           <span class="topbar-active-label" id="topbar-active-label">Dashboard</span>
           <span id="topbar-clock" class="relogio-ao-vivo" style="font-size:12px; color:var(--muted);"></span>
+          <!-- Sino de notificações -->
+          <div class="notif-bell-wrap" id="notif-bell-wrap">
+            <button class="notif-bell-btn" id="notif-bell-btn" type="button" aria-label="Notificações" aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              <span class="notif-bell-badge" id="notif-bell-badge" style="display:none">0</span>
+            </button>
+            <div class="notif-dropdown" id="notif-dropdown" aria-hidden="true">
+              <div class="notif-dropdown-header">
+                <span class="notif-dropdown-title">Notificações</span>
+                <button class="notif-clear-btn" id="notif-clear-btn" type="button">Limpar tudo</button>
+              </div>
+              <div class="notif-list" id="notif-list">
+                <div class="notif-empty">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <p>Sem notificações</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -196,16 +218,18 @@
         <!-- Barra de Ocupação do Turno -->
         <div class="card" id="barra-ocupacao" style="margin-bottom:18px;padding:16px 22px;"></div>
 
-        <div class="grid2">
-          <div class="card">
-            <h2>☕ Próximas pausas</h2>
-            <div id="dash-pausas" class="list"></div>
+        <div class="dash-pausas-full-card card">
+          <div class="dash-pausas-full-header">
+            <div class="dash-pausas-full-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              Próximas pausas
+            </div>
+            <button class="dash-pausas-full-btn" onclick="document.querySelector('[data-tab=pausas]').click()" type="button">Ver escala completa →</button>
           </div>
-          <div class="card">
-            <h2>🎂 Próximos aniversários</h2>
-            <div id="dash-aniversarios" class="list"></div>
-          </div>
+          <div id="dash-pausas" class="list"></div>
         </div>
+        <!-- Hidden element to keep dash-aniversarios available for notification bell JS -->
+        <div id="dash-aniversarios" style="display:none"></div>
       </section>
 
       <!-- Equipe -->
@@ -1635,5 +1659,172 @@
       syncClock();
     })();
     </script>
+    <!-- ===== SINO DE NOTIFICAÇÕES ===== -->
+    <script>
+    (function() {
+      // ── Estado ──────────────────────────────────────────────────────
+      let _notifications = JSON.parse(localStorage.getItem('notif_v1') || '[]');
+
+      function saveNotifs() {
+        localStorage.setItem('notif_v1', JSON.stringify(_notifications));
+      }
+
+      // ── API pública ──────────────────────────────────────────────────
+      window.NotifBell = {
+        add(tipo, titulo, corpo, icone) {
+          const n = {
+            id: Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            tipo: tipo || 'info',
+            titulo, corpo: corpo || '',
+            icone: icone || '🔔',
+            ts: Date.now(),
+            lido: false
+          };
+          _notifications.unshift(n);
+          if (_notifications.length > 50) _notifications = _notifications.slice(0, 50);
+          saveNotifs();
+          renderBell();
+          return n;
+        },
+        clearAll() {
+          _notifications = [];
+          saveNotifs();
+          renderBell();
+        },
+        markRead(id) {
+          const n = _notifications.find(x => x.id === id);
+          if (n) { n.lido = true; saveNotifs(); renderBell(); }
+        }
+      };
+
+      // ── Render ───────────────────────────────────────────────────────
+      function renderBell() {
+        const badge   = document.getElementById('notif-bell-badge');
+        const list    = document.getElementById('notif-list');
+        if (!badge || !list) return;
+
+        const naoLidas = _notifications.filter(n => !n.lido).length;
+        badge.textContent = naoLidas > 9 ? '9+' : naoLidas;
+        badge.style.display = naoLidas > 0 ? 'flex' : 'none';
+
+        if (!_notifications.length) {
+          list.innerHTML = `<div class="notif-empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="opacity:.3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>Sem notificações</p></div>`;
+          return;
+        }
+
+        list.innerHTML = _notifications.map(n => {
+          const ago = formatAgo(n.ts);
+          const tipoCls = {aniversario:'notif-item--bday', aviso:'notif-item--warn', info:'notif-item--info'}[n.tipo] || '';
+          return `<div class="notif-item ${tipoCls} ${n.lido ? 'lido' : ''}" data-id="${n.id}">
+            <div class="notif-item-icon">${n.icone}</div>
+            <div class="notif-item-body">
+              <div class="notif-item-title">${escNotif(n.titulo)}</div>
+              ${n.corpo ? `<div class="notif-item-corpo">${escNotif(n.corpo)}</div>` : ''}
+              <div class="notif-item-ago">${ago}</div>
+            </div>
+            <button class="notif-item-close" data-close="${n.id}" type="button" title="Dispensar">✕</button>
+          </div>`;
+        }).join('');
+
+        list.querySelectorAll('.notif-item[data-id]').forEach(el => {
+          el.addEventListener('click', (e) => {
+            if (e.target.closest('[data-close]')) return;
+            const id = el.dataset.id;
+            window.NotifBell.markRead(id);
+          });
+        });
+        list.querySelectorAll('[data-close]').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.close;
+            _notifications = _notifications.filter(n => n.id !== id);
+            saveNotifs();
+            renderBell();
+          });
+        });
+      }
+
+      function formatAgo(ts) {
+        const d = Date.now() - ts;
+        if (d < 60000) return 'Agora';
+        if (d < 3600000) return `${Math.floor(d/60000)}min atrás`;
+        if (d < 86400000) return `${Math.floor(d/3600000)}h atrás`;
+        return new Date(ts).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+      }
+
+      function escNotif(v) {
+        return String(v||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      // ── Toggle dropdown ──────────────────────────────────────────────
+      const bellBtn  = document.getElementById('notif-bell-btn');
+      const dropdown = document.getElementById('notif-dropdown');
+      const clearBtn = document.getElementById('notif-clear-btn');
+
+      bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = dropdown.classList.contains('open');
+        dropdown.classList.toggle('open', !open);
+        bellBtn.setAttribute('aria-expanded', String(!open));
+        if (!open) renderBell();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!document.getElementById('notif-bell-wrap').contains(e.target)) {
+          dropdown.classList.remove('open');
+          bellBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      clearBtn.addEventListener('click', () => window.NotifBell.clearAll());
+
+      // ── Aniversários do próximo mês ──────────────────────────────────
+      function checkAniversariosProximoMes() {
+        const hoje = new Date();
+        const mesAtual = hoje.getMonth() + 1;      // 1-12
+        const proximoMes = mesAtual === 12 ? 1 : mesAtual + 1;
+
+        // Espera colaboradores carregarem (máx 5s)
+        function tryCheck(attempts) {
+          if (typeof colaboradores === 'undefined' || !Array.isArray(colaboradores) || !colaboradores.length) {
+            if (attempts < 20) setTimeout(() => tryCheck(attempts + 1), 250);
+            return;
+          }
+          const storKey = 'notif_aniv_checked_' + hoje.getFullYear() + '_' + proximoMes;
+          if (localStorage.getItem(storKey)) return;
+
+          const aniversariantes = colaboradores.filter(c =>
+            c.aniversario_mes === proximoMes && c.aniversario_dia
+          ).sort((a,b) => a.aniversario_dia - b.aniversario_dia);
+
+          if (!aniversariantes.length) return;
+
+          const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+          const nomeMes = MESES[proximoMes - 1];
+
+          aniversariantes.forEach(c => {
+            const diaStr = String(c.aniversario_dia).padStart(2,'0');
+            const mesStr = String(c.aniversario_mes).padStart(2,'0');
+            window.NotifBell.add(
+              'aniversario',
+              `🎂 Aniversário em ${nomeMes}`,
+              `${c.nome} faz aniversário dia ${diaStr}/${mesStr}`,
+              '🎂'
+            );
+          });
+
+          localStorage.setItem(storKey, '1');
+          renderBell();
+        }
+
+        tryCheck(0);
+      }
+
+      // ── Init ─────────────────────────────────────────────────────────
+      renderBell();
+      setTimeout(checkAniversariosProximoMes, 600);
+    })();
+    </script>
+
   </body>
 </html>
