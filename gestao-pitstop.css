@@ -4402,3 +4402,328 @@ input[type="number"] {
 /* Show-hide pendencia form */
 #pendencia-form-card { transition: opacity .2s; }
 
+
+/* ==========================================================================
+   SIDEBAR + TOPBAR — Menu lateral hamburguer
+   ========================================================================== */
+
+/* ------------------------------------------------------------------
+   Topbar fixa no topo
+------------------------------------------------------------------ */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 30;
+  background: rgba(10, 10, 14, 0.96);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+/* Botão hamburguer */
+.hamburger-btn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 38px;
+  height: 38px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.hamburger-btn:hover {
+  background: var(--surface3);
+  border-color: rgba(255,255,255,0.14);
+}
+
+.hamburger-line {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: transform 0.22s ease, opacity 0.18s ease, width 0.18s ease;
+}
+
+/* Animação de X quando sidebar aberto */
+.sidebar.open ~ .topbar .hamburger-btn .hamburger-line:nth-child(1),
+body.sidebar-open .hamburger-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.sidebar.open ~ .topbar .hamburger-btn .hamburger-line:nth-child(2),
+body.sidebar-open .hamburger-line:nth-child(2) { opacity: 0; width: 0; }
+.sidebar.open ~ .topbar .hamburger-btn .hamburger-line:nth-child(3),
+body.sidebar-open .hamburger-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.topbar-brand {
+  font-family: "Outfit", sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.topbar-brand .brand-flag {
+  width: 24px;
+  height: 24px;
+}
+
+.topbar-brand span {
+  color: var(--gold);
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar-active-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+   Main com espaço para topbar
+------------------------------------------------------------------ */
+.main-with-topbar {
+  padding-top: calc(56px + 22px) !important;
+}
+
+/* ------------------------------------------------------------------
+   Overlay escuro por trás do sidebar
+------------------------------------------------------------------ */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 39;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+
+.sidebar-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ------------------------------------------------------------------
+   Sidebar lateral
+------------------------------------------------------------------ */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: 272px;
+  z-index: 40;
+  background: rgba(13, 13, 19, 0.98);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+/* Header do sidebar */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-header .brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sidebar-header .brand-text {
+  font-family: "Outfit", sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.sidebar-header .brand-text span {
+  color: var(--gold);
+}
+
+.sidebar-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sidebar-close-btn:hover {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* Labels de seção */
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 14px 20px 6px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.sidebar-section-label--inner {
+  padding-top: 10px;
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
+}
+
+/* Lista de tabs no sidebar */
+.sidebar-tabs {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 10px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface3) transparent;
+}
+
+.sidebar-tabs::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-tabs::-webkit-scrollbar-track { background: transparent; }
+.sidebar-tabs::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+
+/* Override tabs para o sidebar (layout vertical) */
+.sidebar-tabs .tab {
+  display: flex;
+  width: 100%;
+  border-radius: 10px;
+  padding: 10px 13px;
+  font-size: 13.5px;
+  text-align: left;
+  position: relative;
+}
+
+.sidebar-tabs .tab.active {
+  background: rgba(245, 200, 66, 0.1);
+  color: var(--gold);
+  border: 1px solid rgba(245, 200, 66, 0.2);
+}
+
+.sidebar-tabs .tab.active .tab-icon {
+  stroke: var(--gold);
+  opacity: 1;
+}
+
+/* Remove o sublinhado inferior (só para topbar horizontal) */
+.sidebar-tabs .tab.active::after {
+  display: none;
+}
+
+.sidebar-tabs .tab-pev {
+  margin-top: 2px;
+}
+
+.sidebar-tabs .tab-pev.active {
+  background: rgba(88, 101, 242, 0.15) !important;
+  border-color: rgba(88, 101, 242, 0.4) !important;
+  color: #a5acff !important;
+}
+
+/* Rodapé do sidebar */
+.sidebar-footer {
+  padding: 12px 14px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-sync-btn {
+  width: 100%;
+  justify-content: center;
+  height: 38px;
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------------
+   Remove estilos antigos da nav horizontal que colidem
+------------------------------------------------------------------ */
+nav {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------
+   Responsividade
+------------------------------------------------------------------ */
+@media (max-width: 900px) {
+  .main-with-topbar {
+    padding-top: calc(56px + 16px) !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .topbar-active-label {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .sidebar {
+    width: 88vw;
+    max-width: 300px;
+  }
+}

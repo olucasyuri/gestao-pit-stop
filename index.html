@@ -11,104 +11,146 @@
     />
     <link rel="stylesheet" href="gestao-pitstop.css" />
     <link rel="stylesheet" href="gestao-pev.css" />
+    <link rel="stylesheet" href="escala-fds.css" />
   </head>
   <body>
 
-    <!-- ===== NAVEGAÇÃO ===== -->
-    <nav>
-      <div class="nav-inner">
+    <!-- ===== OVERLAY DO SIDEBAR ===== -->
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
 
+    <!-- ===== SIDEBAR LATERAL ===== -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Menu principal">
+
+      <div class="sidebar-header">
         <div class="brand">
           <span class="brand-flag">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3 17L12 3l9 14H3z" fill="currentColor"/>
             </svg>
           </span>
-          Gestão <span>PIT STOP</span>
+          <span class="brand-text">Gestão <span>PIT STOP</span></span>
         </div>
+        <button class="sidebar-close-btn" id="sidebar-close" type="button" aria-label="Fechar menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
 
-        <div class="tabs" role="tablist" aria-label="Seções do painel">
+      <div class="sidebar-section-label">PRINCIPAL</div>
+      <div class="tabs sidebar-tabs" role="tablist" aria-label="Seções do painel">
 
-          <button class="tab active" data-tab="dashboard" role="tab" aria-selected="true">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
-            </svg>
-            Dashboard
-          </button>
+        <button class="tab active" data-tab="dashboard" role="tab" aria-selected="true">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+          </svg>
+          Dashboard
+        </button>
 
-          <button class="tab" data-tab="equipe" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/>
-            </svg>
-            Equipe
-          </button>
+        <button class="tab" data-tab="equipe" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/>
+          </svg>
+          Equipe
+        </button>
 
-          <button class="tab" data-tab="pausas" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
-            </svg>
-            Pausas
-          </button>
+        <button class="tab" data-tab="pausas" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+          </svg>
+          Pausas
+        </button>
 
-          <button class="tab" data-tab="folgas" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/>
-            </svg>
-            Folgas
-          </button>
+        <button class="tab" data-tab="folgas" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/>
+          </svg>
+          Folgas
+        </button>
 
-          <button class="tab" data-tab="ferias" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/>
-            </svg>
-            Férias
-          </button>
+        <button class="tab" data-tab="ferias" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/>
+          </svg>
+          Férias
+        </button>
 
-          <button class="tab" data-tab="pendencias" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 5a3 3 0 0 1 6 0v0H9v0z"/><path d="M9 12h6M9 16h4"/>
-            </svg>
-            Pendências
-          </button>
+        <div class="sidebar-section-label sidebar-section-label--inner">OPERACIONAL</div>
 
-          <button class="tab" data-tab="avisos" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            Novo Aviso
-          </button>
+        <button class="tab" data-tab="pendencias" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M9 5a3 3 0 0 1 6 0v0H9v0z"/><path d="M9 12h6M9 16h4"/>
+          </svg>
+          Pendências
+        </button>
 
-          <button class="tab" data-tab="aniversarios" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 3v1m0 6v1"/>
-            </svg>
-            Aniversários
-          </button>
+        <button class="tab" data-tab="avisos" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Novo Aviso
+        </button>
 
-          <button class="tab tab-pev" data-tab="pev" role="tab" aria-selected="false">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-            PEV
-            <span class="tab-badge-new">NOVO</span>
-          </button>
+        <button class="tab" data-tab="aniversarios" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 3v1m0 6v1"/>
+          </svg>
+          Aniversários
+        </button>
 
-        </div>
+        <div class="sidebar-section-label sidebar-section-label--inner">ESCALAS</div>
 
-        <div class="nav-actions">
-          <button class="pill" id="btn-sync" type="button">
-            <svg class="sync-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-            </svg>
-            Sincronizar
-          </button>
-        </div>
+        <button class="tab" data-tab="fds" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h4M8 18h8"/>
+          </svg>
+          Escala FDS
+        </button>
+
+        <button class="tab tab-pev" data-tab="pev" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          PEV
+          <span class="tab-badge-new">NOVO</span>
+        </button>
 
       </div>
-    </nav>
+
+      <div class="sidebar-footer">
+        <button class="pill sidebar-sync-btn" id="btn-sync" type="button">
+          <svg class="sync-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          </svg>
+          Sincronizar
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar" role="banner">
+      <div class="topbar-inner">
+        <button class="hamburger-btn" id="sidebar-open" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+        <div class="topbar-brand">
+          <span class="brand-flag">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 17L12 3l9 14H3z" fill="currentColor"/>
+            </svg>
+          </span>
+          Gestão <span>PIT STOP</span>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-active-label" id="topbar-active-label">Dashboard</span>
+          <span id="topbar-clock" class="relogio-ao-vivo" style="font-size:12px; color:var(--muted);"></span>
+        </div>
+      </div>
+    </header>
 
     <!-- ===== CONTEÚDO PRINCIPAL ===== -->
-    <main>
+    <main class="main-with-topbar">
 
       <!-- Dashboard -->
       <section class="page active" id="page-dashboard" role="tabpanel">
@@ -467,6 +509,113 @@
         <!-- Grid principal -->
         <div class="bday-main-card">
           <div id="aniversarios-list" class="birthday-grid"></div>
+        </div>
+
+      </section>
+
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- ESCALA FDS — Sábado                             -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <section class="page" id="page-fds" role="tabpanel">
+
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Operação fim de semana</p>
+            <h1>Escala FDS</h1>
+            <p class="muted">Monte a escala do sábado — diária e mensal — e exporte em TXT para envio.</p>
+          </div>
+        </div>
+
+        <!-- Sub-abas: Diária / Mensal -->
+        <div class="fds-subtabs" role="tablist">
+          <button class="fds-subtab active" data-fds-tab="diaria" role="tab" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Escala do Sábado
+          </button>
+          <button class="fds-subtab" data-fds-tab="mensal" role="tab" type="button">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
+            Escala Mensal
+          </button>
+        </div>
+
+        <!-- ── Painel: Escala Diária ── -->
+        <div class="fds-panel" id="fds-panel-diaria">
+
+          <div class="fds-legenda">
+            <span style="font-weight:600; color:var(--text); margin-right:4px">Legenda:</span>
+            <span class="fds-legenda-item"><span class="fds-legenda-dot fds-legenda-dot-normal"></span> Normal</span>
+            <span class="fds-legenda-item"><span class="fds-legenda-dot fds-legenda-dot-red"></span> Vermelho (destaque)</span>
+            <span class="fds-legenda-item"><span class="fds-legenda-dot fds-legenda-dot-bold"></span> Negrito (separador)</span>
+            <span style="margin-left:auto; font-size:11px;">Clique em <strong style="color:var(--text)">⋮</strong> em qualquer célula para formatar</span>
+          </div>
+
+          <div class="fds-table-card">
+            <div class="fds-table-card-header">
+              <span class="fds-table-card-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Escala do Sábado — Diária
+              </span>
+              <div class="fds-table-card-actions">
+                <button class="btn btn-small" id="fds-btn-limpar-diaria" type="button" style="color:var(--red); border-color:rgba(251,113,133,0.25);">
+                  🗑 Limpar escala
+                </button>
+              </div>
+            </div>
+            <div id="fds-tabela-diaria"></div>
+          </div>
+
+        </div>
+
+        <!-- ── Painel: Escala Mensal ── -->
+        <div class="fds-panel" id="fds-panel-mensal" style="display:none;">
+
+          <div class="fds-table-card">
+            <div class="fds-table-card-header">
+              <span class="fds-table-card-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Escala Mensal — Linha Home, BLIP Tarde, Especialistas
+              </span>
+              <div class="fds-table-card-actions">
+                <div id="fds-mes-controles"></div>
+                <button class="btn btn-small" id="fds-btn-limpar-mensal" type="button" style="color:var(--red); border-color:rgba(251,113,133,0.25);">
+                  🗑 Limpar mensal
+                </button>
+              </div>
+            </div>
+            <div id="fds-tabela-mensal"></div>
+          </div>
+
+        </div>
+
+        <!-- ── Seção de Exportação ── -->
+        <div class="fds-export-card">
+          <h3>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar / Copiar TXT
+          </h3>
+          <div class="fds-export-opcoes">
+            <label><input type="radio" name="fds-export-modo" value="diaria"> Somente Escala do Sábado</label>
+            <label><input type="radio" name="fds-export-modo" value="mensal"> Somente Escala Mensal</label>
+            <label><input type="radio" name="fds-export-modo" value="ambos" checked> Ambas (completo)</label>
+          </div>
+          <div class="fds-export-actions">
+            <button class="btn btn-gold" id="fds-btn-exportar-txt" type="button">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Baixar .txt
+            </button>
+            <button class="btn" id="fds-btn-copiar-txt" type="button">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copiar TXT
+            </button>
+            <button class="btn" id="fds-btn-preview" type="button">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              Pré-visualizar
+            </button>
+          </div>
+          <div class="fds-preview-section" id="fds-preview-section" style="display:none;">
+            <h4>Pré-visualização do TXT</h4>
+            <pre id="fds-preview-box"></pre>
+          </div>
         </div>
 
       </section>
@@ -998,6 +1147,46 @@
     <script src="gestao-pitstop.js"></script>
     <script src="gestao-pev.js"></script>
     <script src="gestao-pev-importacoes.js"></script>
+    <script src="escala-fds.js"></script>
+
+    <!-- Sub-abas FDS (Diária / Mensal) -->
+    <script>
+    (function () {
+      function initFdsTabs() {
+        const btns   = document.querySelectorAll('.fds-subtab[data-fds-tab]');
+        const panels = document.querySelectorAll('.fds-panel[id^="fds-panel-"]');
+
+        if (!btns.length) return;
+
+        btns.forEach(btn => {
+          btn.addEventListener('click', () => {
+            btns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const target = btn.dataset.fdsTab;
+            panels.forEach(p => {
+              p.style.display = p.id === 'fds-panel-' + target ? '' : 'none';
+            });
+            // Se for mensal, garante render dos controles
+            if (target === 'mensal' && window.FDS) {
+              window.FDS.renderMensal();
+            }
+          });
+        });
+      }
+
+      // Inicializa quando a aba FDS é aberta
+      document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+        tab.addEventListener('click', () => {
+          if (tab.dataset.tab === 'fds') {
+            requestAnimationFrame(() => {
+              initFdsTabs();
+              if (window.FDS) window.FDS.init();
+            });
+          }
+        });
+      });
+    })();
+    </script>
 
     <!-- Dropdown customizado de colaboradores no modal de folga -->
     <script>
@@ -1363,26 +1552,87 @@
     <!-- Sector hero switcher — esconde banner do setor não ativo -->
     <script>
     (function() {
-      // References to the two hero sections
       const pitHero = document.querySelector('#page-dashboard .hero');
       const pevHero = document.querySelector('#page-pev .pev-hero');
-
       function updateSectorHeroes(activeTab) {
         const isPEV = activeTab === 'pev';
         if (pitHero) pitHero.classList.toggle('sector-hidden', isPEV);
         if (pevHero) pevHero.classList.toggle('sector-hidden', !isPEV);
       }
-
-      // Observe tab changes — hook into existing tab buttons
       document.querySelectorAll('.tab[data-tab]').forEach(btn => {
         btn.addEventListener('click', () => {
-          // Small delay to let the page switch happen first
           requestAnimationFrame(() => updateSectorHeroes(btn.dataset.tab));
         });
       });
-
-      // Initial state — dashboard is active by default
       updateSectorHeroes('dashboard');
+    })();
+    </script>
+
+    <!-- ===== SIDEBAR HAMBURGER — controle ===== -->
+    <script>
+    (function () {
+      const sidebar  = document.getElementById('sidebar');
+      const overlay  = document.getElementById('sidebar-overlay');
+      const openBtn  = document.getElementById('sidebar-open');
+      const closeBtn = document.getElementById('sidebar-close');
+      const activeLabel = document.getElementById('topbar-active-label');
+      const topbarClock = document.getElementById('topbar-clock');
+
+      // Mapa de labels para a topbar
+      const TAB_LABELS = {
+        dashboard:    'Dashboard',
+        equipe:       'Equipe',
+        pausas:       'Pausas',
+        folgas:       'Folgas',
+        ferias:       'Férias',
+        pendencias:   'Pendências',
+        avisos:       'Novo Aviso',
+        aniversarios: 'Aniversários',
+        fds:          'Escala FDS',
+        pev:          'PEV',
+      };
+
+      function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+        openBtn.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('open');
+        openBtn.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+
+      openBtn.addEventListener('click', openSidebar);
+      closeBtn.addEventListener('click', closeSidebar);
+      overlay.addEventListener('click', closeSidebar);
+
+      // Fecha com Esc
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+      });
+
+      // Fecha ao clicar em qualquer aba e atualiza label da topbar
+      document.querySelectorAll('.tab[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (activeLabel) {
+            activeLabel.textContent = TAB_LABELS[btn.dataset.tab] || btn.dataset.tab;
+          }
+          // Pequeno delay para fechar suavemente
+          setTimeout(closeSidebar, 120);
+        });
+      });
+
+      // Sincroniza relógio da topbar com o relógio principal
+      function syncClock() {
+        const main = document.getElementById('relogio-ao-vivo');
+        if (main && topbarClock) topbarClock.textContent = main.textContent;
+      }
+      setInterval(syncClock, 1000);
+      syncClock();
     })();
     </script>
   </body>

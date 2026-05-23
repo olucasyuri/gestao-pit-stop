@@ -1,0 +1,564 @@
+/* ==========================================================================
+   Escala FDS — Estilos específicos
+   ========================================================================== */
+
+/* ------------------------------------------------------------------
+   Wrapper da aba FDS
+------------------------------------------------------------------ */
+#page-fds .section-head {
+  margin-bottom: 1.5rem;
+}
+
+/* ------------------------------------------------------------------
+   Sub-abas FDS (Diária / Mensal)
+------------------------------------------------------------------ */
+.fds-subtabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.fds-subtab {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fds-subtab:hover {
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.fds-subtab.active {
+  background: var(--gold);
+  color: #0b0b0f;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   Card de tabela
+------------------------------------------------------------------ */
+.fds-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.fds-table-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fds-table-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fds-table-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ------------------------------------------------------------------
+   Scroll horizontal
+------------------------------------------------------------------ */
+.fds-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ------------------------------------------------------------------
+   Tabela principal
+------------------------------------------------------------------ */
+.fds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  min-width: 720px;
+}
+
+/* ------ Cabeçalho topo (título + data) ------ */
+.fds-header-row-top {
+  background: #1a1209;
+}
+
+.fds-title-cell {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fds-title-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ------ Cabeçalho secundário (responsáveis) ------ */
+.fds-header-row-secondary {
+  background: var(--surface2);
+}
+
+.fds-header-row-secondary th {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fds-header-row-secondary th:last-child {
+  border-right: none;
+}
+
+/* ------ Cabeçalho de colunas (PIT STOP, BLIP, ...) ------ */
+.fds-header-cols {
+  background: var(--surface3);
+}
+
+.fds-header-cols th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.fds-header-cols th:last-child {
+  border-right: none;
+}
+
+/* ------ Linhas de dado ------ */
+.fds-data-row {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+
+.fds-data-row:hover {
+  background: rgba(255,255,255,0.025);
+}
+
+/* ------ Células ------ */
+.fds-cell {
+  padding: 1px 2px;
+  border-right: 1px solid rgba(255,255,255,0.05);
+  vertical-align: middle;
+  min-width: 130px;
+}
+
+.fds-cell:last-child {
+  border-right: none;
+}
+
+.fds-cell-header {
+  background: var(--surface3) !important;
+}
+
+.fds-cell-inner {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ------ Input de célula ------ */
+.fds-cell-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 5px 8px;
+  width: 100%;
+  min-width: 0;
+  transition: background 0.1s;
+  border-radius: 5px;
+}
+
+.fds-cell-input:focus {
+  background: rgba(245,200,66,0.08);
+  color: var(--gold);
+}
+
+.fds-cell-input.fds-red {
+  color: #ff4c4c;
+}
+
+.fds-cell-input.fds-red:focus {
+  color: #ff6b6b;
+}
+
+.fds-cell-input.fds-bold,
+.fds-header-cell-input {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.fds-cell-input::placeholder {
+  color: rgba(151,148,168,0.3);
+}
+
+/* ------ Botão de menu de célula ------ */
+.fds-cell-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.fds-cell-inner:hover .fds-cell-menu-btn {
+  opacity: 1;
+}
+
+.fds-cell-menu-btn:hover {
+  background: var(--surface3);
+  color: var(--text);
+}
+
+/* ------ Input de meta (no cabeçalho) ------ */
+.fds-meta-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  width: 100%;
+  transition: background 0.1s;
+}
+
+.fds-meta-input:focus {
+  background: rgba(245,200,66,0.1);
+  color: var(--gold);
+}
+
+.fds-meta-input::placeholder {
+  color: rgba(151,148,168,0.4);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ------ Context Menu de célula ------ */
+.fds-cell-ctx-menu {
+  position: absolute;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 9999;
+  min-width: 160px;
+  padding: 4px;
+  animation: fds-menu-in 0.12s ease;
+}
+
+@keyframes fds-menu-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.fds-ctx-opt {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.fds-ctx-opt:hover {
+  background: var(--surface3);
+}
+
+.fds-ctx-del {
+  color: var(--red) !important;
+}
+
+.fds-ctx-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 3px 4px;
+}
+
+/* ------------------------------------------------------------------
+   Tabela Mensal
+------------------------------------------------------------------ */
+.fds-table-mensal th,
+.fds-table-mensal td {
+  min-width: 100px;
+}
+
+.fds-mensal-section-header {
+  background: #1a1209;
+}
+
+.fds-mensal-label-cell {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.fds-mensal-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  padding: 8px 14px;
+  text-transform: uppercase;
+}
+
+.fds-mensal-data-row {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.fds-mensal-data-row:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.fds-mensal-datas-col {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 12px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+.fds-mensal-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 5px 8px;
+  width: 100%;
+  border-radius: 5px;
+  transition: background 0.1s;
+}
+
+.fds-mensal-input:focus {
+  background: rgba(245,200,66,0.08);
+  color: var(--gold);
+}
+
+/* ------------------------------------------------------------------
+   Controles de mês
+------------------------------------------------------------------ */
+.fds-mes-controles {
+  margin-bottom: 1rem;
+}
+
+.fds-mes-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fds-mes-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 150px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------
+   Seção de exportação
+------------------------------------------------------------------ */
+.fds-export-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-top: 1.25rem;
+}
+
+.fds-export-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fds-export-opcoes {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.fds-export-opcoes label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.fds-export-opcoes input[type="radio"] {
+  accent-color: var(--gold);
+  width: 14px;
+  height: 14px;
+}
+
+.fds-export-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fds-preview-section {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.fds-preview-section h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+#fds-preview-box {
+  background: #0a0a0d;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
+  line-height: 1.55;
+}
+
+/* ------------------------------------------------------------------
+   Dicas / legenda
+------------------------------------------------------------------ */
+.fds-legenda {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  font-size: 11.5px;
+  color: var(--muted);
+  align-items: center;
+}
+
+.fds-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fds-legenda-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fds-legenda-dot-red    { background: #ff4c4c; }
+.fds-legenda-dot-bold   { background: var(--text); }
+.fds-legenda-dot-normal { background: var(--muted); }
+
+/* ------------------------------------------------------------------
+   Empty state da tabela
+------------------------------------------------------------------ */
+.fds-table-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ------------------------------------------------------------------
+   Responsivo
+------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .fds-table {
+    font-size: 11px;
+  }
+
+  .fds-cell {
+    min-width: 90px;
+  }
+
+  .fds-export-opcoes {
+    gap: 12px;
+  }
+
+  .fds-table-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
