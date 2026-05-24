@@ -119,10 +119,10 @@
 
     estadoMeta = JSON.parse(localStorage.getItem(KEY_META)) ?? {
       data:            "",
-      // Linha de cabeçalho col A (ex: FERNANDA/JANNE)
+      // Linha de cabeçalho col A
       label_pitstop:   "",
       // Linha de cabeçalho col B
-      label_blip:      "AGENDA / BLIP",
+      label_blip:      "",
       // Linha de cabeçalho col C
       label_n1pitstop: "",
       // Linha de cabeçalho col D
