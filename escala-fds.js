@@ -232,22 +232,22 @@
           <tr class="fds-header-row-secondary">
             <th>
               <input class="fds-meta-input" id="fds-meta-label-pitstop" type="text"
-                placeholder="Ex: FERNANDA/JANNE" value="${esc(m.label_pitstop)}"
+                placeholder="Gestão Pit Stop" value="${esc(m.label_pitstop)}"
                 title="Responsável N1 Pit Stop">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-blip" type="text"
-                placeholder="AGENDA / BLIP" value="${esc(m.label_blip)}"
+                placeholder="Gestão Chat" value="${esc(m.label_blip)}"
                 title="Responsável N1 Chat">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-n1pitstop" type="text"
-                placeholder="Ex: N1 PIT STOP" value="${esc(m.label_n1pitstop)}"
+                placeholder="Ex: Gestão Especialistas" value="${esc(m.label_n1pitstop)}"
                 title="Especialistas">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-n1chat" type="text"
-                placeholder="Ex: MAURICIO, BRUNO" value="${esc(m.label_n1chat)}"
+                placeholder="Gestão Plantão" value="${esc(m.label_n1chat)}"
                 title="Gestor Plantão">
             </th>
             <th>
@@ -262,7 +262,7 @@
               <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.05em;white-space:nowrap;">📋 AGENDA:</span>
                 <input class="fds-meta-input" id="fds-meta-agenda" type="text"
-                  placeholder="Ex: FERNANDA, JONAS — quem da agenda está presente no dia"
+                  placeholder="Ex: FERNANDA, ZENAIDE — quem da agenda está presente no dia"
                   value="${esc(m.agenda)}"
                   style="flex:1;"
                   title="Quem da agenda está presente no dia">
@@ -325,7 +325,7 @@
       "fds-meta-data":           "data",
       "fds-meta-label-pitstop":  "label_pitstop",
       "fds-meta-label-blip":     "label_blip",
-      "fds-meta-label-n1pitstop":"label_n1pitstop",
+      "fds-meta-label-n1pitstop":"label_especialista",
       "fds-meta-label-n1chat":   "label_n1chat",
       "fds-meta-label-esp":      "label_esp",
       "fds-meta-agenda":         "agenda",
@@ -566,7 +566,7 @@
     const resp = [];
     if (m.label_pitstop)   resp.push(`${colPitstop}: ${m.label_pitstop}`);
     if (m.label_blip)      resp.push(`${colBlip}: ${m.label_blip}`);
-    if (m.label_n1pitstop) resp.push(`N1 ${colPitstop}: ${m.label_n1pitstop}`);
+    if (m.label_n1pitstop) resp.push(`N1 ${colPitstop}: ${m.label_especialista}`);
     if (m.label_n1chat)    resp.push(`N1 Chat: ${m.label_n1chat}`);
     if (m.label_esp)       resp.push(`${colEsp}: ${m.label_esp}`);
     resp.forEach(r => { txt += `  ${r}\n`; });
