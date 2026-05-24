@@ -233,27 +233,27 @@
             <th>
               <input class="fds-meta-input" id="fds-meta-label-pitstop" type="text"
                 placeholder="Ex: FERNANDA/JANNE" value="${esc(m.label_pitstop)}"
-                title="Responsável Pit Stop">
+                title="Responsável N1 Pit Stop">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-blip" type="text"
                 placeholder="AGENDA / BLIP" value="${esc(m.label_blip)}"
-                title="Responsável BLIP">
+                title="Responsável N1 Chat">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-n1pitstop" type="text"
                 placeholder="Ex: N1 PIT STOP" value="${esc(m.label_n1pitstop)}"
-                title="N1 Pit Stop">
+                title="Especialistas">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-n1chat" type="text"
                 placeholder="Ex: MAURICIO, BRUNO" value="${esc(m.label_n1chat)}"
-                title="N1 Chat">
+                title="Gestor Plantão">
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-esp" type="text"
-                placeholder="Ex: OSIEL" value="${esc(m.label_esp)}"
-                title="Especialista N1">
+                placeholder="" value="${esc(m.label_esp)}"
+                title="">
             </th>
           </tr>
           <!-- Linha 2b: campo Agenda -->
