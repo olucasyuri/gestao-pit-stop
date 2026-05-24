@@ -242,7 +242,7 @@
             </th>
             <th>
               <input class="fds-meta-input" id="fds-meta-label-n1pitstop" type="text"
-                placeholder="Ex: Gestão Especialistas" value="${esc(m.label_n1pitstop)}"
+                placeholder="Gestão Especialistas" value="${esc(m.label_n1pitstop)}"
                 title="Especialistas">
             </th>
             <th>
@@ -262,7 +262,7 @@
               <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.05em;white-space:nowrap;">📋 AGENDA:</span>
                 <input class="fds-meta-input" id="fds-meta-agenda" type="text"
-                  placeholder="Ex: FERNANDA, ZENAIDE — quem da agenda está presente no dia"
+                  placeholder="Ex: FERNANDA, ZENAIDE, JANNEKELI — quem da agenda está presente no dia"
                   value="${esc(m.agenda)}"
                   style="flex:1;"
                   title="Quem da agenda está presente no dia">
