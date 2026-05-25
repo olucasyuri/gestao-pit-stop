@@ -540,6 +540,7 @@ function PEV_saveColab() {
   const almoco  = document.getElementById('pev-colab-almoco').value;
   const regiao  = document.getElementById('pev-colab-regiao').value.trim();
   if (!nome || !horario) { alert('Preencha nome e horário.'); return; }
+  if (!regiao) { alert('Selecione uma região.'); return; }
 
   if (PEV_editingColabIdx !== null) {
     // Edição: preserva o id existente para o upsert funcionar
@@ -564,9 +565,15 @@ function PEV_saveColab() {
   PEV_renderEquipe();
   PEV_renderEscalaList();
   PEV_renderAlmocoList();
-  // Atualiza mapa de distribuição geográfica
+  
+  // IMPORTANTE: Atualiza mapa de distribuição geográfica
+  // A região selecionada no select será mapeada para o estado no mapa-brasil.js
   if (typeof window.MapaBrasil_refresh === 'function') {
     setTimeout(window.MapaBrasil_refresh, 100);
+  }
+  
+  if (typeof toast === 'function') {
+    toast(`✅ Colaborador ${PEV_editingColabIdx !== null ? 'atualizado' : 'adicionado'} com sucesso!`);
   }
 }
 

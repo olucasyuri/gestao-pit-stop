@@ -25,6 +25,41 @@ function dcEsc(v) {
     ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+async function carregarFolgasSupabase() {
+  try {
+    if (typeof supa !== 'undefined' && supa) {
+      const { data, error } = await supa
+        .from('folgas')
+        .select('*')
+        .order('data_folga', { ascending: true });
+      
+      if (error) throw error;
+      
+      // Mapeia os dados do Supabase para o formato esperado
+      // IMPORTANTE: Sua tabela NÃO tem data_fim, usa apenas data_folga
+      const folgas = (data || []).map(f => ({
+        colaborador_nome: f.colaborador_nome,
+        data_folga: f.data_folga,
+        data_fim: f.data_folga, // Usa data_folga como data_fim (1 dia apenas)
+        status: f.status,
+        tipo: f.status, // Compatibilidade
+        motivo: f.motivo,
+      }));
+      
+      console.log('✅ Folgas carregadas do Supabase:', folgas.length);
+      
+      // NÃO salva no localStorage para evitar loop infinito
+      // O cache será feito apenas quando necessário
+      return folgas;
+    }
+  } catch (e) {
+    console.error('❌ Erro ao carregar folgas do Supabase:', e);
+  }
+  
+  // Fallback para localStorage
+  return JSON.parse(localStorage.getItem('pitstop_folgas') || '[]');
+}
+
 function lerDados() {
   function tryParse(key, def) {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(def)); } catch { return def; }
@@ -121,13 +156,28 @@ var ICONS = {
 };
 
 /* ─── Render principal ──────────────────────────────── */
-function renderDashboardCharts() {
+async function renderDashboardCharts() {
+  // Evita renderização simultânea
+  if (dashboardIsRendering) {
+    console.log('⏭️ Dashboard: Já está renderizando, pulando...');
+    return;
+  }
+  
+  dashboardIsRendering = true;
+  lastRenderTime = Date.now();
+  
   var container = document.getElementById('dc-dashboard-charts');
-  if (!container) return;
+  if (!container) {
+    dashboardIsRendering = false;
+    return;
+  }
+
+  // Carrega folgas do Supabase primeiro
+  var folgasSupabase = await carregarFolgasSupabase();
 
   var dados = lerDados();
   var colaboradores = dados.colaboradores;
-  var folgas        = dados.folgas;
+  var folgas        = folgasSupabase.length > 0 ? folgasSupabase : dados.folgas; // Prioriza Supabase
   var pausas        = dados.pausas;
   var pendencias    = dados.pendencias;
   var flags         = dados.flags;
@@ -154,6 +204,11 @@ function renderDashboardCharts() {
   var feriasAtivas  = folgas.filter(function(f) {
     return (f.status === 'ferias' || f.tipo === 'ferias') && new Date((f.data_fim||f.data_folga) + 'T00:00:00') >= hoje;
   });
+  
+  // Debug: log de férias encontradas
+  console.log('📊 Dashboard - Folgas totais:', folgas.length);
+  console.log('📊 Dashboard - Férias ativas:', feriasAtivas.length, feriasAtivas);
+  
   var folgasHoje    = folgas.filter(function(f) { return f.data_folga === today && f.status !== 'ferias' && f.tipo !== 'ferias'; });
   var feriasHoje    = folgas.filter(function(f) {
     if (f.status !== 'ferias' && f.tipo !== 'ferias') return false;
@@ -205,16 +260,18 @@ function renderDashboardCharts() {
   /* Card Folgas e Férias — compacto, lado a lado */
   var proxFolgasHtml = proxFolgas.length > 0
     ? proxFolgas.map(function(f) {
+        var nome = f.colaborador_nome || f.nome || '?'; // Tenta colaborador_nome primeiro, depois nome
         var dt = f.data_folga ? new Date(f.data_folga + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
-        return '<div class="dc2-aus-row"><div class="dc2-aus-av" style="background:rgba(245,200,66,0.12);color:' + DC.gold + '">' + dcEsc((f.nome||'?').charAt(0).toUpperCase()) + '</div><div class="dc2-aus-info"><strong>' + dcEsc(f.nome||'—') + '</strong><span>' + dt + '</span></div><div class="dc2-aus-badge" style="color:' + DC.gold + '">📅</div></div>';
+        return '<div class="dc2-aus-row"><div class="dc2-aus-av" style="background:rgba(245,200,66,0.12);color:' + DC.gold + '">' + dcEsc(nome.charAt(0).toUpperCase()) + '</div><div class="dc2-aus-info"><strong>' + dcEsc(nome) + '</strong><span>' + dt + '</span></div><div class="dc2-aus-badge" style="color:' + DC.gold + '">📅</div></div>';
       }).join('')
     : '<div class="dc2-empty-xs">Nenhuma folga futura</div>';
 
   var proxFeriasHtml = proxFerias.length > 0
     ? proxFerias.map(function(f) {
+        var nome = f.colaborador_nome || f.nome || '?'; // Tenta colaborador_nome primeiro, depois nome
         var ini = f.data_folga ? new Date(f.data_folga + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
         var fim = f.data_fim   ? new Date(f.data_fim   + 'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : ini;
-        return '<div class="dc2-aus-row"><div class="dc2-aus-av" style="background:rgba(96,165,250,0.12);color:' + DC.blue + '">' + dcEsc((f.nome||'?').charAt(0).toUpperCase()) + '</div><div class="dc2-aus-info"><strong>' + dcEsc(f.nome||'—') + '</strong><span>' + ini + ' → ' + fim + '</span></div><div class="dc2-aus-badge" style="color:' + DC.blue + '">🏖</div></div>';
+        return '<div class="dc2-aus-row"><div class="dc2-aus-av" style="background:rgba(96,165,250,0.12);color:' + DC.blue + '">' + dcEsc(nome.charAt(0).toUpperCase()) + '</div><div class="dc2-aus-info"><strong>' + dcEsc(nome) + '</strong><span>' + ini + ' → ' + fim + '</span></div><div class="dc2-aus-badge" style="color:' + DC.blue + '">🏖</div></div>';
       }).join('')
     : '<div class="dc2-empty-xs">Nenhuma férias futura</div>';
 
@@ -374,6 +431,9 @@ function renderDashboardCharts() {
     kpiRow +
     '<div class="dc2-row-3">' + cardFolgasFerias + cardEquipe + cardPausas + '</div>' +
     '<div class="dc2-row-3">' + cardPendencias + cardImportacoes + cardAtividade + '</div>';
+  
+  // Libera flag de renderização
+  dashboardIsRendering = false;
 }
 
 /* ─── Helper KPI card ──────────────────────────────── */
@@ -667,35 +727,53 @@ function waitForDataThenRender() {
   checkData();
 }
 
-/* ─── Auto-refresh (VERSÃO MELHORADA) ────────────────────────── */
+/* ─── Auto-refresh (VERSÃO CORRIGIDA - SEM LOOP) ────────────────────────── */
+var dashboardIsRendering = false;
+var lastRenderTime = 0;
+
 function startDashboardAutoRefresh() {
   // Escuta mudanças de localStorage de OUTRAS abas
+  // IMPORTANTE: storage event só dispara em outras abas, não na mesma
   window.addEventListener('storage', function(e) {
     if (e.key && (e.key.indexOf('pitstop_') === 0 || e.key.indexOf('pev_') === 0)) {
-      console.log('🔄 Dashboard: Storage mudou, atualizando...');
-      renderDashboardCharts();
+      // Evita re-render muito frequente (debounce de 1 segundo)
+      var now = Date.now();
+      if (now - lastRenderTime > 1000 && !dashboardIsRendering) {
+        console.log('🔄 Dashboard: Storage mudou em outra aba, atualizando...');
+        renderDashboardCharts();
+      }
     }
   });
   
   // Escuta eventos customizados
   window.addEventListener('system-data-ready', function(e) {
-    if (e.detail && e.detail.allReady) {
+    if (e.detail && e.detail.allReady && !dashboardIsRendering) {
       console.log('🎉 Dashboard: Todos dados prontos, renderizando...');
       renderDashboardCharts();
     }
   });
   
   // Atualiza quando clica no tab dashboard
+  var tabClickHandlerAdded = false;
   document.querySelectorAll('.tab[data-tab="dashboard"]').forEach(function(btn) {
-    btn.addEventListener('click', function() { 
-      setTimeout(renderDashboardCharts, 80); 
-    });
+    if (!tabClickHandlerAdded) {
+      btn.addEventListener('click', function() {
+        if (!dashboardIsRendering) {
+          setTimeout(renderDashboardCharts, 80);
+        }
+      });
+      tabClickHandlerAdded = true;
+    }
   });
   
-  // Auto-refresh periódico (2 minutos)
-  setInterval(renderDashboardCharts, 120000);
+  // Auto-refresh periódico (5 minutos) - aumentado para evitar sobrecarga
+  setInterval(function() {
+    if (!dashboardIsRendering) {
+      renderDashboardCharts();
+    }
+  }, 300000); // 5 minutos
   
-  console.log('✅ Dashboard: Auto-refresh configurado');
+  console.log('✅ Dashboard: Auto-refresh configurado (sem loops)');
 }
 
 /* ─── Init (VERSÃO MELHORADA) ────────────────────────────────── */
