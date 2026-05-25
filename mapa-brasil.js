@@ -398,24 +398,119 @@ function mapaAbrirConfig() {
   const ufs = Object.keys(NOME_ESTADO).sort((a, b) =>
     NOME_ESTADO[a].localeCompare(NOME_ESTADO[b]));
 
+  const allUfs = [{ value: '', label: '— Não definido —' }].concat(
+    ufs.map(uf => ({ value: uf, label: `${NOME_ESTADO[uf]} (${uf})` }))
+  );
+
   list.innerHTML = pitstopColabs.map(c => {
-    const sel = mapaEstados[c.nome] || '';
-    const opts = `<option value="">— Não definido —</option>` +
-      ufs.map(uf => `<option value="${uf}" ${sel === uf ? 'selected' : ''}>${NOME_ESTADO[uf]} (${uf})</option>`).join('');
+    const sel     = mapaEstados[c.nome] || '';
+    const selLabel = sel ? `${NOME_ESTADO[sel]} (${sel})` : '— Não definido —';
+    const dotColor = c.cargo === 'Técnicos' ? '#34d399' : '#f5c842';
     return `
       <div class="mapa-modal-row">
         <div class="mapa-modal-nome">
-          <span class="mapa-modal-cargo-dot" style="background:${c.cargo === 'Técnicos' ? '#34d399' : '#f5c842'}"></span>
-          ${c.nome}
-          <span class="mapa-modal-cargo">${c.cargo}</span>
+          <span class="mapa-modal-cargo-dot" style="background:${dotColor}"></span>
+          <span class="mapa-modal-nome-text">${c.nome}</span>
+          <span class="mapa-modal-cargo">${c.cargo || ''}</span>
         </div>
-        <select class="mapa-modal-select" data-nome="${c.nome}">
-          ${opts}
-        </select>
+        <div class="mapa-dd" data-nome="${c.nome}" data-value="${sel}">
+          <button type="button" class="mapa-dd-btn">
+            <span class="mapa-dd-label">${selLabel}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mapa-dd-list" style="display:none">
+            <div class="mapa-dd-search-wrap">
+              <input type="text" class="mapa-dd-search" placeholder="Buscar estado...">
+            </div>
+            <div class="mapa-dd-options">
+              ${allUfs.map(u => `<div class="mapa-dd-opt${u.value === sel ? ' selected' : ''}" data-val="${u.value}">${u.label}</div>`).join('')}
+            </div>
+          </div>
+        </div>
       </div>`;
   }).join('');
 
+  // Bind dos dropdowns customizados
+  mapaBindDropdowns(list);
+
+  // Move o modal para o body para garantir que position:fixed funcione corretamente,
+  // evitando que fique preso dentro de containers com overflow/transform
+  if (modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+
   modal.style.display = 'flex';
+}
+
+/* ─── Bind dos dropdowns customizados ────────────────────── */
+function mapaBindDropdowns(container) {
+  // Fecha todos os dropdowns abertos
+  function fecharTodos(exceto) {
+    container.querySelectorAll('.mapa-dd-list').forEach(dl => {
+      if (dl !== exceto) dl.style.display = 'none';
+    });
+    container.querySelectorAll('.mapa-dd-btn').forEach(b => b.classList.remove('open'));
+  }
+
+  container.querySelectorAll('.mapa-dd').forEach(dd => {
+    const btn   = dd.querySelector('.mapa-dd-btn');
+    const list  = dd.querySelector('.mapa-dd-list');
+    const search = dd.querySelector('.mapa-dd-search');
+    const opts  = dd.querySelector('.mapa-dd-options');
+
+    // Abrir / fechar
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = list.style.display !== 'none';
+      fecharTodos();
+      if (!isOpen) {
+        list.style.display = 'block';
+        btn.classList.add('open');
+        search.value = '';
+        opts.querySelectorAll('.mapa-dd-opt').forEach(o => o.style.display = '');
+        search.focus();
+        // Posiciona o dropdown para não sair da tela
+        const rect = dd.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 260) {
+          list.style.top = 'auto';
+          list.style.bottom = '100%';
+          list.style.marginBottom = '4px';
+          list.style.marginTop = '0';
+        } else {
+          list.style.top = '100%';
+          list.style.bottom = 'auto';
+          list.style.marginTop = '4px';
+          list.style.marginBottom = '0';
+        }
+      }
+    });
+
+    // Busca
+    search.addEventListener('input', () => {
+      const q = search.value.toLowerCase();
+      opts.querySelectorAll('.mapa-dd-opt').forEach(o => {
+        o.style.display = o.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
+    // Selecionar opção
+    opts.addEventListener('click', (e) => {
+      const opt = e.target.closest('.mapa-dd-opt');
+      if (!opt) return;
+      const val   = opt.dataset.val;
+      const label = opt.textContent.trim();
+      dd.dataset.value = val;
+      btn.querySelector('.mapa-dd-label').textContent = label;
+      opts.querySelectorAll('.mapa-dd-opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      list.style.display = 'none';
+      btn.classList.remove('open');
+    });
+  });
+
+  // Clique fora fecha tudo
+  document.addEventListener('click', fecharTodos, { capture: false });
 }
 
 function mapaFecharConfig() {
@@ -423,16 +518,41 @@ function mapaFecharConfig() {
   if (modal) modal.style.display = 'none';
 }
 
-function mapaAlvarConfig() {
-  const selects = document.querySelectorAll('.mapa-modal-select');
+async function mapaAlvarConfig() {
+  // Lê os valores dos dropdowns customizados (data-value no .mapa-dd)
+  const dropdowns = document.querySelectorAll('.mapa-dd[data-nome]');
   const mapaEstados = {};
-  selects.forEach(sel => {
-    if (sel.value) mapaEstados[sel.dataset.nome] = sel.value;
+  dropdowns.forEach(dd => {
+    if (dd.dataset.value) mapaEstados[dd.dataset.nome] = dd.dataset.value;
   });
+
+  // Salva no localStorage imediatamente (UI não trava)
   localStorage.setItem('mapa_estados_pitstop', JSON.stringify(mapaEstados));
   mapaFecharConfig();
   renderMapaBrasil();
   if (typeof window.DC_refreshDashboard === 'function') window.DC_refreshDashboard();
+
+  // Sincroniza com Supabase em background
+  if (typeof supa !== 'undefined' && supa) {
+    try {
+      // Monta array para upsert em lote
+      const rows = Object.entries(mapaEstados).map(([colaborador_nome, uf]) => ({
+        colaborador_nome,
+        uf,
+        atualizado_em: new Date().toISOString(),
+      }));
+      if (rows.length > 0) {
+        const { error } = await supa
+          .from('mapa_estados_pitstop')
+          .upsert(rows, { onConflict: 'colaborador_nome' });
+        if (error) throw error;
+        console.log('✅ Mapa: estados sincronizados com Supabase —', rows.length, 'registros');
+      }
+    } catch (e) {
+      console.error('❌ Mapa: erro ao sincronizar estados:', e.message);
+      // Não reverte — localStorage já foi salvo, outro gestor verá na próxima carga
+    }
+  }
 }
 
 /* ─── Injetar CSS ──────────────────────────────────────────── */
@@ -619,21 +739,65 @@ function mapaInjetarCSS() {
 }
 .mapa-modal-row {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 8px 10px; border-radius: 9px;
+  gap: 12px; padding: 10px 12px; border-radius: 9px;
   background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05);
+  min-height: 44px;
 }
 .mapa-modal-nome {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 13px; color: rgba(255,255,255,.8); min-width: 0; flex: 1;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: rgba(255,255,255,.8);
+  min-width: 0; flex: 1; overflow: hidden;
 }
-.mapa-modal-cargo-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.mapa-modal-cargo     { font-size: 10.5px; color: rgba(255,255,255,.3); flex-shrink: 0; }
-.mapa-modal-select {
-  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
-  color: #fff; border-radius: 8px; padding: 5px 8px; font-size: 12px;
-  font-family: inherit; min-width: 160px; cursor: pointer;
+.mapa-modal-nome-text {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 1; min-width: 0;
 }
-.mapa-modal-select:focus { outline: none; border-color: #f5c842; }
+.mapa-modal-cargo-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mapa-modal-cargo     { font-size: 10.5px; color: rgba(255,255,255,.3); flex-shrink: 0; white-space: nowrap; }
+/* Dropdown customizado — substitui o <select> nativo */
+.mapa-dd {
+  position: relative; flex-shrink: 0; min-width: 190px;
+}
+.mapa-dd-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.85); border-radius: 8px; padding: 7px 10px;
+  font-size: 12px; font-family: inherit; cursor: pointer;
+  transition: border-color .15s; text-align: left;
+}
+.mapa-dd-btn:hover, .mapa-dd-btn.open { border-color: #f5c842; color: #fff; }
+.mapa-dd-btn svg { flex-shrink: 0; opacity: .5; transition: transform .15s; }
+.mapa-dd-btn.open svg { transform: rotate(180deg); opacity: 1; }
+.mapa-dd-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapa-dd-list {
+  position: absolute; left: 0; z-index: 999999;
+  background: #1a1a26; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.7);
+  width: 220px; overflow: hidden;
+}
+.mapa-dd-search-wrap {
+  padding: 8px 8px 4px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.mapa-dd-search {
+  width: 100%; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; color: #fff; font-family: inherit; font-size: 12px;
+  padding: 5px 8px; outline: none; box-sizing: border-box;
+}
+.mapa-dd-search:focus { border-color: #f5c842; }
+.mapa-dd-search::placeholder { color: rgba(255,255,255,.3); }
+.mapa-dd-options {
+  max-height: 220px; overflow-y: auto; padding: 4px;
+}
+.mapa-dd-options::-webkit-scrollbar { width: 4px; }
+.mapa-dd-options::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 99px; }
+.mapa-dd-opt {
+  padding: 7px 10px; border-radius: 6px; font-size: 12px;
+  color: rgba(255,255,255,.75); cursor: pointer; transition: background .1s;
+  white-space: nowrap;
+}
+.mapa-dd-opt:hover { background: rgba(255,255,255,.07); color: #fff; }
+.mapa-dd-opt.selected { background: rgba(245,200,66,.15); color: #f5c842; font-weight: 600; }
 .mapa-modal-footer {
   padding: 12px 20px; border-top: 1px solid rgba(255,255,255,.07);
   display: flex; justify-content: flex-end;
@@ -694,14 +858,11 @@ function waitForMapaDataThenRender() {
       console.log('  - Estados mapeados:', Object.keys(mapaEstados).length);
       renderMapaBrasil();
       
-      // Se PEV ainda não tem dados, escuta evento
-      if (!hasPev) {
-        console.log('⏳ Mapa: Aguardando dados PEV...');
-        window.addEventListener('pev-data-ready', () => {
-          console.log('🔄 Mapa: PEV chegou, re-renderizando...');
-          renderMapaBrasil();
-        }, { once: true });
-      }
+      // Sempre escuta evento de atualização PEV (não só quando vazio)
+      window.addEventListener('pev-data-ready', () => {
+        console.log('🔄 Mapa: PEV atualizado, re-renderizando...');
+        renderMapaBrasil();
+      });
     } else if (attempts < maxAttempts) {
       // Tenta novamente em 100ms
       setTimeout(checkData, 100);
@@ -709,6 +870,11 @@ function waitForMapaDataThenRender() {
       console.warn('⚠️ Mapa: Timeout aguardando dados');
       console.warn('  Renderizando mapa vazio...');
       renderMapaBrasil(); // Renderiza vazio para não quebrar UI
+      // Ainda escuta para quando dados chegarem depois
+      window.addEventListener('pev-data-ready', () => {
+        console.log('🔄 Mapa: PEV chegou após timeout, re-renderizando...');
+        renderMapaBrasil();
+      });
     }
   }
   

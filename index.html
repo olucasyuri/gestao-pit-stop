@@ -205,11 +205,12 @@
           </div>
         </div>
 
-        <div class="grid4">
+        <div class="grid5">
           <div class="metric m-blue"><span>Colaboradores</span><strong id="metric-colabs">0</strong></div>
           <div class="metric m-gold"><span>Técnicos</span><strong id="metric-tecnicos">0</strong></div>
           <div class="metric m-green"><span>Gestão</span><strong id="metric-gestao">0</strong></div>
           <div class="metric m-muted"><span>Folgas futuras</span><strong id="metric-folgas">0</strong></div>
+          <div class="metric m-ferias"><span>Próximas férias</span><strong id="metric-ferias">0</strong></div>
         </div>
 
         <!-- Painel de Indicadores Gerenciais -->
@@ -1168,10 +1169,13 @@
 
     <!-- ===== SCRIPTS ===== -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="gestao-pitstop.js"></script>
     <script src="gestao-pev.js"></script>
     <script src="gestao-pev-importacoes.js"></script>
     <script src="escala-fds.js"></script>
+    <!-- ✅ CORREÇÃO: Script de inicialização ANTES do dashboard -->
+    <script src="sistema-inicializacao.js"></script>
     <script src="dashboard-charts.js"></script>
     <script src="mapa-brasil.js"></script>
 

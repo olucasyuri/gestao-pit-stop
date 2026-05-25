@@ -601,11 +601,13 @@ function injectDcCSS() {
 }
 
 /* ─── Montagem no DOM ─────────────────────────────── */
+
+/* ─── Montagem no DOM (VERSÃO CORRIGIDA) ─────────────────────────── */
 function mountDashboardCharts() {
   var page = document.getElementById('page-dashboard');
   if (!page) return;
 
-  /* Ocultar painel-indicadores e barra-ocupacao originais — substituídos pelos cards abaixo */
+  /* Ocultar painel-indicadores e barra-ocupacao originais */
   var painelInd = document.getElementById('painel-indicadores');
   var barraOc   = document.getElementById('barra-ocupacao');
   if (painelInd) painelInd.style.display = 'none';
@@ -615,32 +617,96 @@ function mountDashboardCharts() {
   if (!container) {
     container = document.createElement('div');
     container.id = 'dc-dashboard-charts';
-    var grid4 = page.querySelector('.grid4');
+    var grid4 = page.querySelector('.grid4, .grid5');
     if (grid4) grid4.after(container);
     else page.appendChild(container);
   }
+  
   injectDcCSS();
-  renderDashboardCharts();
+  
+  // ✅ CORREÇÃO: Aguardar dados antes de renderizar
+  waitForDataThenRender();
 }
 
-/* ─── Auto-refresh ────────────────────────────────── */
+/* ─── Aguardar dados estarem prontos ─────────────────────────── */
+function waitForDataThenRender() {
+  var attempts = 0;
+  var maxAttempts = 50; // 5 segundos máximo
+  
+  function checkData() {
+    attempts++;
+    
+    // Verifica se dados básicos existem
+    var pitstopColabs = JSON.parse(localStorage.getItem('pitstop_colaboradores') || '[]');
+    var pevColabs = JSON.parse(localStorage.getItem('pev_colaboradores') || '[]');
+    
+    var hasData = pitstopColabs.length > 0;
+    
+    if (hasData) {
+      console.log('✅ Dashboard: Dados prontos, renderizando...');
+      renderDashboardCharts();
+      
+      // Se PEV ainda não tem dados, escuta evento
+      if (pevColabs.length === 0) {
+        console.log('⏳ Dashboard: Aguardando dados PEV...');
+        window.addEventListener('pev-data-ready', function() {
+          console.log('🔄 Dashboard: PEV chegou, re-renderizando...');
+          renderDashboardCharts();
+        }, { once: true });
+      }
+    } else if (attempts < maxAttempts) {
+      // Tenta novamente em 100ms
+      setTimeout(checkData, 100);
+    } else {
+      console.error('❌ Dashboard: Timeout aguardando dados');
+      // Renderiza mesmo assim (mostrará empty states)
+      renderDashboardCharts();
+    }
+  }
+  
+  checkData();
+}
+
+/* ─── Auto-refresh (VERSÃO MELHORADA) ────────────────────────── */
 function startDashboardAutoRefresh() {
+  // Escuta mudanças de localStorage de OUTRAS abas
   window.addEventListener('storage', function(e) {
     if (e.key && (e.key.indexOf('pitstop_') === 0 || e.key.indexOf('pev_') === 0)) {
+      console.log('🔄 Dashboard: Storage mudou, atualizando...');
       renderDashboardCharts();
     }
   });
-  document.querySelectorAll('.tab[data-tab="dashboard"]').forEach(function(btn) {
-    btn.addEventListener('click', function() { setTimeout(renderDashboardCharts, 80); });
+  
+  // Escuta eventos customizados
+  window.addEventListener('system-data-ready', function(e) {
+    if (e.detail && e.detail.allReady) {
+      console.log('🎉 Dashboard: Todos dados prontos, renderizando...');
+      renderDashboardCharts();
+    }
   });
+  
+  // Atualiza quando clica no tab dashboard
+  document.querySelectorAll('.tab[data-tab="dashboard"]').forEach(function(btn) {
+    btn.addEventListener('click', function() { 
+      setTimeout(renderDashboardCharts, 80); 
+    });
+  });
+  
+  // Auto-refresh periódico (2 minutos)
   setInterval(renderDashboardCharts, 120000);
+  
+  console.log('✅ Dashboard: Auto-refresh configurado');
 }
 
-/* ─── Init ────────────────────────────────────────── */
+/* ─── Init (VERSÃO MELHORADA) ────────────────────────────────── */
 (function initDashboardCharts() {
   function doMount() {
-    setTimeout(function() { mountDashboardCharts(); startDashboardAutoRefresh(); }, 450);
+    setTimeout(function() { 
+      mountDashboardCharts(); 
+      startDashboardAutoRefresh(); 
+    }, 450);
   }
+  
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', doMount);
   } else {
@@ -648,4 +714,5 @@ function startDashboardAutoRefresh() {
   }
 })();
 
+// API pública para refresh manual
 window.DC_refreshDashboard = renderDashboardCharts;

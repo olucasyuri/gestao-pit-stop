@@ -592,6 +592,7 @@ function renderMetrics() {
   $("metric-tecnicos").textContent = colaboradores.filter((c) => c.cargo === "Técnicos").length;
   $("metric-gestao").textContent = colaboradores.filter((c) => c.cargo === "Gestão Pit Stop").length;
   $("metric-folgas").textContent = folgas.filter(f => isFolgaAtualOuFutura(f) && getFolgaInfo(f).tipo !== "ferias").length;
+  $("metric-ferias").textContent = folgas.filter(f => isFolgaAtualOuFutura(f) && getFolgaInfo(f).tipo === "ferias").length;
 
   // Painel de indicadores gerenciais
   renderIndicadoresGerenciais();

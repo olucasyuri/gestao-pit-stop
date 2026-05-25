@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
     // ── POST: criar novo registro (vindo do bot Discord ou manual) ────────
     if (req.method === 'POST') {
-      const { empresa, cnpj, importacao, discord_user, obs, action } = req.body || {};
+      const { empresa, cnpj, importacao, discord_user, obs, data_virada, action } = req.body || {};
 
       // Ação especial: receber do bot Discord
       if (!action || action === 'create') {
@@ -74,6 +74,7 @@ export default async function handler(req, res) {
           empresa: String(empresa).trim(),
           cnpj: formatCNPJ(String(cnpj).trim()),
           importacao: importacao === 'sim' ? 'sim' : 'nao',
+          data_virada: data_virada ? String(data_virada).trim() : null,
           discord_user: String(discord_user || '').trim(),
           obs: String(obs || '').trim(),
           criado_em: new Date().toISOString(),
@@ -87,12 +88,13 @@ export default async function handler(req, res) {
 
     // ── PUT: atualizar registro ────────────────────────────────────────────
     if (req.method === 'PUT') {
-      const { id, empresa, cnpj, importacao, obs } = req.body || {};
+      const { id, empresa, cnpj, importacao, obs, data_virada } = req.body || {};
       if (!id) return res.status(400).json({ error: 'id obrigatório.' });
       const updates = {};
       if (empresa !== undefined) updates.empresa = String(empresa).trim();
       if (cnpj !== undefined) updates.cnpj = formatCNPJ(String(cnpj).trim());
       if (importacao !== undefined) updates.importacao = importacao === 'sim' ? 'sim' : 'nao';
+      if (data_virada !== undefined) updates.data_virada = data_virada ? String(data_virada).trim() : null;
       if (obs !== undefined) updates.obs = String(obs).trim();
       const data = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
       return res.status(200).json({ ok: true, data });

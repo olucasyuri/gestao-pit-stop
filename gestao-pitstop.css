@@ -281,6 +281,13 @@ main {
   margin-bottom: 18px;
 }
 
+.grid5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1197,6 +1204,7 @@ input[type="number"] {
   .hero,
   .grid2,
   .grid4,
+  .grid5,
   .birthday-grid,
   .pendencias-layout {
     grid-template-columns: 1fr;
@@ -1398,6 +1406,7 @@ input[type="number"] {
 .metric.m-gold::before  { background: #f5c842; }
 .metric.m-green::before { background: #22c55e; }
 .metric.m-muted::before { background: #9794a8; }
+.metric.m-ferias::before { background: #facc15; }
 
 .metric span {
   font-size: 11px;

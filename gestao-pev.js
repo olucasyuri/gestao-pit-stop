@@ -56,7 +56,42 @@ function PEV_today() {
   const d = new Date();
   return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
 }
-function PEV_saveColabs() { localStorage.setItem('pev_colaboradores', JSON.stringify(PEV_colabs)); }
+function PEV_saveColabs() {
+  localStorage.setItem('pev_colaboradores', JSON.stringify(PEV_colabs));
+}
+
+/* Salva/atualiza colaborador no Supabase (upsert) */
+async function PEV_saveColabSupabase(colab) {
+  if (typeof supa === 'undefined' || !supa) return;
+  try {
+    if (!colab.id) {
+      colab.id = 'pev_colab_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+    const { error } = await supa
+      .from('pev_colaboradores')
+      .upsert({ id: colab.id, nome: colab.nome, horario: colab.horario, regiao: colab.regiao, almoco: colab.almoco, ativo: true }, { onConflict: 'id' });
+    if (error) throw error;
+    console.log('✅ PEV Supabase: colaborador salvo —', colab.nome);
+  } catch (e) {
+    console.error('❌ PEV Supabase: erro ao salvar —', e.message);
+  }
+}
+
+/* Desativa colaborador no Supabase (soft delete) */
+async function PEV_deleteColabSupabase(colab) {
+  if (typeof supa === 'undefined' || !supa || !colab.id) return;
+  try {
+    const { error } = await supa
+      .from('pev_colaboradores')
+      .update({ ativo: false })
+      .eq('id', colab.id);
+    if (error) throw error;
+    console.log('✅ PEV Supabase: colaborador desativado —', colab.nome);
+  } catch (e) {
+    console.error('❌ PEV Supabase: erro ao desativar —', e.message);
+  }
+}
+
 function PEV_initState() {
   PEV_colabs.forEach(c => {
     if (!PEV_escalaState[c.nome]) PEV_escalaState[c.nome] = {status:'none', ext:'dia', obs:''};
@@ -465,11 +500,17 @@ function PEV_renderEquipe() {
     row.querySelector('[data-edit]').onclick = () => PEV_openEditColab(i);
     row.querySelector('[data-del]').onclick = () => {
       if (confirm(`Remover "${c.nome}" da equipe PEV?`)) {
+        const colab = PEV_colabs[i];
+        PEV_deleteColabSupabase(colab);
         PEV_colabs.splice(i, 1);
         PEV_saveColabs();
         PEV_renderEquipe();
         PEV_renderEscalaList();
         PEV_renderAlmocoList();
+        // Atualiza mapa de distribuição geográfica
+        if (typeof window.MapaBrasil_refresh === 'function') {
+          setTimeout(window.MapaBrasil_refresh, 100);
+        }
       }
     };
     list.appendChild(row);
@@ -499,19 +540,34 @@ function PEV_saveColab() {
   const almoco  = document.getElementById('pev-colab-almoco').value;
   const regiao  = document.getElementById('pev-colab-regiao').value.trim();
   if (!nome || !horario) { alert('Preencha nome e horário.'); return; }
-  const obj = {nome, horario, almoco, regiao};
+
   if (PEV_editingColabIdx !== null) {
+    // Edição: preserva o id existente para o upsert funcionar
+    const idExistente = PEV_colabs[PEV_editingColabIdx].id;
+    const obj = { id: idExistente, nome, horario, almoco, regiao };
     PEV_colabs[PEV_editingColabIdx] = obj;
+    PEV_saveColabSupabase(obj);
   } else {
+    // Novo: gera id local (Supabase vai confirmar/substituir pelo upsert)
+    const obj = {
+      id: 'pev_colab_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      nome, horario, almoco, regiao,
+    };
     PEV_colabs.push(obj);
     PEV_escalaState[nome] = {status:'none', ext:'dia', obs:''};
     PEV_almocoState[nome] = {horario: almoco, done:false};
+    PEV_saveColabSupabase(obj);
   }
+
   PEV_saveColabs();
   PEV_closeModal('pev-modal-colab');
   PEV_renderEquipe();
   PEV_renderEscalaList();
   PEV_renderAlmocoList();
+  // Atualiza mapa de distribuição geográfica
+  if (typeof window.MapaBrasil_refresh === 'function') {
+    setTimeout(window.MapaBrasil_refresh, 100);
+  }
 }
 
 /* ── Discord / Hermes ────────────────────────────────────── */
@@ -705,4 +761,43 @@ function PEV_closeModal(id) { const el = document.getElementById(id); if (el) el
   PEV_renderAlmocoList();
   PEV_renderEquipe();
   PEV_renderEscalaOutput();
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// ✅ CORREÇÃO: Evento de data ready
+// ═══════════════════════════════════════════════════════════════
+
+(function notifyPevReady() {
+  // Aguarda carregamento completo dos dados PEV
+  function checkAndNotify() {
+    const pevColabs = JSON.parse(localStorage.getItem('pev_colaboradores') || '[]');
+    
+    if (pevColabs.length > 0) {
+      // Notifica sistema que PEV está pronto
+      if (window.SystemData) {
+        window.SystemData.markReady('pev');
+      }
+      
+      // Evento customizado para outros componentes
+      window.dispatchEvent(new CustomEvent('pev-data-ready', {
+        detail: { 
+          colaboradores: pevColabs,
+          timestamp: Date.now()
+        }
+      }));
+      
+      console.log('✅ PEV: Dados prontos,', pevColabs.length, 'colaboradores');
+    } else {
+      console.warn('⚠️ PEV: Nenhum colaborador encontrado');
+    }
+  }
+  
+  // Espera DOM carregar
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(checkAndNotify, 100);
+    });
+  } else {
+    setTimeout(checkAndNotify, 100);
+  }
 })();

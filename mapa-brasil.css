@@ -1,0 +1,327 @@
+/**
+ * 🎨 CSS MAPA DO BRASIL - ESTILO MELHORADO
+ * 
+ * Adicione este CSS ao final de gestao-pitstop.css
+ * ou crie um arquivo mapa-brasil.css separado
+ * 
+ * Este estilo deixa o mapa igual à imagem de referência:
+ * - Fundo escuro (#1a1d2e)
+ * - Estados com cor dourada/amarronzada
+ * - Bordas mais nítidas
+ * - Heatmap com tons quentes (vermelho para alta densidade)
+ */
+
+/* Container principal do mapa — usa ID para bater com o elemento criado pelo JS */
+#mapa-brasil-container,
+.mapa-brasil-container {
+  background: #1a1d2e !important; /* Fundo escuro igual à imagem */
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* Cabeçalho do mapa */
+.mapa-header {
+  margin-bottom: 20px;
+}
+
+.mapa-titulo {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.mapa-subtitulo {
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+}
+
+/* Área do SVG do mapa */
+#mapa-brasil-container .mapa-svg-wrap,
+.mapa-brasil-container .mapa-svg-wrapper {
+  background: #1a1d2e; /* Mesmo fundo escuro */
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Estados do mapa - CORES BASE
+   ATENÇÃO: NÃO usar !important aqui — o JS aplica cores dinâmicas via
+   atributo fill inline para o heatmap. !important quebraria isso.
+*/
+.mapa-brasil-container svg path,
+.mapa-brasil-container svg polygon {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Estados ao passar o mouse — sem !important para não conflitar com o JS */
+.mapa-brasil-container svg path:hover,
+.mapa-brasil-container svg polygon:hover {
+  stroke: #f5c842;
+  stroke-width: 2px;
+}
+
+/* Estados com colaboradores (heatmap) */
+.mapa-brasil-container svg path[data-count],
+.mapa-brasil-container svg polygon[data-count] {
+  /* A cor será aplicada via JavaScript baseado na densidade */
+}
+
+/* Estados sem dados — opacidade reduzida (fill controlado pelo JS) */
+.mapa-brasil-container svg path[data-count="0"],
+.mapa-brasil-container svg polygon[data-count="0"] {
+  opacity: 0.6;
+}
+
+/* Labels dos estados (siglas) */
+.mapa-brasil-container text {
+  fill: rgba(255,255,255,0.7);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Tooltip do mapa */
+#mapa-tooltip {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  background: rgba(20,22,35,0.98) !important; /* Fundo escuro do tooltip */
+  border: 1px solid rgba(245,200,66,0.4) !important;
+  border-radius: 12px;
+  padding: 12px 16px;
+  min-width: 200px;
+  max-width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+}
+
+.mapa-tt-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff !important;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapa-tt-uf {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(245,200,66,0.2);
+  color: #f5c842 !important;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.mapa-tt-total {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 10px;
+}
+
+.mapa-tt-sec {
+  margin-bottom: 8px;
+}
+
+.mapa-tt-tag {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 7px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.mapa-tt-tag.pev {
+  background: rgba(167,139,250,0.25);
+  color: #b4a0ff;
+}
+
+.mapa-tt-tag.pit {
+  background: rgba(52,211,153,0.2);
+  color: #5ae4b8;
+}
+
+.mapa-tt-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mapa-tt-colab {
+  font-size: 11px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.85);
+  border-radius: 5px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.mapa-tt-colab.inactive {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+/* Legenda do mapa */
+.mapa-legenda {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.mapa-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+
+.mapa-legenda-cor {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.mapa-legenda-cor.baixo { background: #7a6f47; }
+.mapa-legenda-cor.medio { background: #c78742; }
+.mapa-legenda-cor.alto { background: #e05858; }
+
+/* Ranking lateral */
+.mapa-ranking {
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.mapa-ranking-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f5c842;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mapa-ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: all 0.2s;
+}
+
+.mapa-ranking-item:hover {
+  background: rgba(245,200,66,0.08);
+  border-color: rgba(245,200,66,0.2);
+}
+
+.mapa-ranking-pos {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f5c842;
+  min-width: 24px;
+  text-align: center;
+}
+
+.mapa-ranking-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mapa-ranking-estado {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+
+.mapa-ranking-count {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+
+.mapa-ranking-barra-wrap {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.mapa-ranking-barra {
+  height: 100%;
+  background: linear-gradient(90deg, #f5c842, #e05858);
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+
+/* Botão de configurar estados */
+.mapa-btn-config {
+  background: rgba(245,200,66,0.12);
+  border: 1px solid rgba(245,200,66,0.25);
+  color: #f5c842;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mapa-btn-config:hover {
+  background: rgba(245,200,66,0.18);
+  border-color: rgba(245,200,66,0.4);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .mapa-brasil-container {
+    padding: 16px;
+  }
+  
+  .mapa-svg-wrapper {
+    padding: 12px;
+  }
+  
+  .mapa-legenda {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+/* Animação de aparecimento */
+@keyframes mapa-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mapa-brasil-container {
+  animation: mapa-fade-in 0.4s ease;
+}
