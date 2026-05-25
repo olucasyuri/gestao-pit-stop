@@ -4070,47 +4070,47 @@ input[type="number"] {
 .folga-cal-wrap {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.25rem;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
   margin-bottom: 1rem;
 }
 .folga-cal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
-.folga-cal-title { font-size: 16px; font-weight: 700; }
+.folga-cal-title { font-size: 13px; font-weight: 700; }
 .folga-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 2px;
 }
 .folga-cal-day-label {
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: var(--muted);
-  padding: 4px 0 8px;
+  padding: 2px 0 4px;
   text-transform: uppercase;
   letter-spacing: .04em;
 }
 .folga-cal-cell {
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 4px 2px;
-  font-size: 12px;
+  padding: 2px 1px;
+  font-size: 10px;
   font-weight: 500;
   position: relative;
   cursor: default;
   background: transparent;
   border: 1px solid transparent;
   transition: background .12s;
-  min-height: 48px;
+  min-height: 28px;
 }
 .folga-cal-cell.today {
   background: rgba(250,204,21,.1);
@@ -4123,16 +4123,16 @@ input[type="number"] {
   border-color: rgba(99,190,255,.25);
 }
 .folga-cal-cell.empty { opacity: 0; pointer-events: none; }
-.folga-cal-num { font-size: 12px; font-weight: 600; line-height: 1; }
+.folga-cal-num { font-size: 10px; font-weight: 600; line-height: 1; }
 .folga-cal-dots {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: 1px;
   justify-content: center;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .folga-cal-dot {
-  width: 5px; height: 5px;
+  width: 4px; height: 4px;
   border-radius: 50%;
   background: #63beff;
   flex-shrink: 0;
@@ -4154,6 +4154,16 @@ input[type="number"] {
   pointer-events: none;
 }
 .folga-cal-cell.has-folga:hover .folga-cal-names { display: block; }
+
+/* ── Pills de folga (variante azul) no grid mensal ── */
+.folga-person-pill {
+  background: rgba(99,190,255,.08) !important;
+  border-color: rgba(99,190,255,.2) !important;
+}
+.folga-person-avatar {
+  background: rgba(99,190,255,.2) !important;
+  color: #63beff !important;
+}
 
 /* ── CALENDÁRIO DE FÉRIAS (anual) ── */
 .ferias-cal-year-header {
@@ -5020,16 +5030,16 @@ nav {
 
 /* Calendário de folgas — tamanho reduzido */
 .folga-cal-grid {
-  gap: 3px;
+  gap: 2px;
 }
 
 .folga-cal-cell {
-  min-height: 38px;
-  font-size: 11px;
+  min-height: 28px;
+  font-size: 10px;
 }
 
 .folga-cal-title {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 

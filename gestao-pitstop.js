@@ -591,7 +591,7 @@ function renderMetrics() {
   $("metric-colabs").textContent = colaboradores.length;
   $("metric-tecnicos").textContent = colaboradores.filter((c) => c.cargo === "Técnicos").length;
   $("metric-gestao").textContent = colaboradores.filter((c) => c.cargo === "Gestão Pit Stop").length;
-  $("metric-folgas").textContent = folgas.filter(isFolgaAtualOuFutura).length;
+  $("metric-folgas").textContent = folgas.filter(f => isFolgaAtualOuFutura(f) && getFolgaInfo(f).tipo !== "ferias").length;
 
   // Painel de indicadores gerenciais
   renderIndicadoresGerenciais();
@@ -1699,15 +1699,12 @@ function renderPainelAusencias() {
   const cards = ausentes.map(c => {
     const f = getFlagDefault(c.nome);
     let tipo, cls, badge;
-    if (f.ferias)        { tipo = "ferias";   cls = "ac-ferias";   badge = "FERIAS"; }
-    else if (f.atestado) { tipo = "atestado"; cls = "ac-atestado"; badge = "ATESTADO"; }
-    else                 { tipo = "off";      cls = "ac-off";      badge = "OFF HOJE"; }
+    if (f.atestado) { tipo = "atestado"; cls = "ac-atestado"; badge = "ATESTADO"; }
+    else            { tipo = "off";      cls = "ac-off";      badge = "OFF HOJE"; }
 
     let sub = "";
     if (tipo === "atestado" && atestados[c.nome]) {
       sub = atestados[c.nome].dias + " dia(s) de atestado";
-    } else if (tipo === "ferias") {
-      sub = "Em ferias";
     } else {
       sub = "Fora da escala";
     }
@@ -1948,12 +1945,6 @@ function renderFolgas() {
     "Folgas de hoje ou próximas",
     folgasAtivas,
     "Nenhuma folga futura cadastrada."
-  ));
-  lista.appendChild(buildFolgaCategory(
-    "Férias futuras",
-    "Períodos de férias dos colaboradores",
-    feriasAtivas,
-    "Nenhum período de férias cadastrado."
   ));
 
   if (arquivadas.length) {
@@ -4094,61 +4085,48 @@ function renderFolgasCalendar() {
   const wrap = document.getElementById('folgas-calendar-view');
   if (!wrap) return;
 
-  const hoje = new Date();
-  const ano  = hoje.getFullYear();
-  const mes  = hoje.getMonth();
-
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const DIAS  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const hoje  = new Date();
+  const ano   = hoje.getFullYear();
+  const mesAtual = hoje.getMonth();
 
-  // Map dia -> [nomes]
-  const folgasPorDia = {};
+  // Map mês -> [{ nome, dia }]
+  const folgasPorMes = {};
+  for (let i = 0; i < 12; i++) folgasPorMes[i] = [];
+
   (folgas || []).forEach(f => {
     const info = typeof getFolgaInfo === 'function' ? getFolgaInfo(f) : null;
-    if (!info) return;
-    if (info.tipo === 'ferias') return;
-    const d = new Date(info.dataInicio + 'T12:00:00');
-    if (d.getFullYear() === ano && d.getMonth() === mes) {
-      const key = d.getDate();
-      if (!folgasPorDia[key]) folgasPorDia[key] = [];
-      folgasPorDia[key].push(f.colaborador_nome || f.colaborador || '?');
+    if (!info || info.tipo === 'ferias') return;
+    const nome = f.colaborador_nome || f.colaborador || '?';
+    const d = new Date((info.dataInicio || '') + 'T12:00:00');
+    if (d.getFullYear() === ano) {
+      const fmtD = dt => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+      folgasPorMes[d.getMonth()].push({ nome, dia: fmtD(d) });
     }
   });
 
-  const primeiroDia = new Date(ano, mes, 1).getDay();
-  const totalDias   = new Date(ano, mes + 1, 0).getDate();
-  const hojeNum     = hoje.getDate();
+  const months = MESES.map((nomeMes, i) => {
+    const items = folgasPorMes[i];
+    const isCurrent = i === mesAtual;
+    const people = items.length
+      ? items.map(it => {
+          const ini = (typeof initials === 'function') ? initials(it.nome) : it.nome.slice(0,2).toUpperCase();
+          return `<div class="ferias-person-pill folga-person-pill">
+            <div class="ferias-person-avatar folga-person-avatar">${ini}</div>
+            <span class="ferias-person-name">${escapeHtml(it.nome)}</span>
+            <span class="ferias-person-period">${it.dia}</span>
+          </div>`;
+        }).join('')
+      : `<div class="ferias-month-empty">Sem folgas</div>`;
 
-  let cells = '';
-  // labels
-  for (let d = 0; d < 7; d++) {
-    cells += `<div class="folga-cal-day-label">${DIAS[d]}</div>`;
-  }
-  // empty
-  for (let i = 0; i < primeiroDia; i++) {
-    cells += `<div class="folga-cal-cell empty"></div>`;
-  }
-  // days
-  for (let d = 1; d <= totalDias; d++) {
-    const nomes = folgasPorDia[d] || [];
-    const isHoje = d === hojeNum;
-    const hasFolga = nomes.length > 0;
-    const dots = nomes.map(() => `<div class="folga-cal-dot"></div>`).join('');
-    const nameList = nomes.map(n => `<div>${escapeHtml(n)}</div>`).join('');
-    cells += `<div class="folga-cal-cell${isHoje?' today':''}${hasFolga?' has-folga':''}">
-      <span class="folga-cal-num">${d}</span>
-      ${hasFolga ? `<div class="folga-cal-dots">${dots}</div><div class="folga-cal-names">${nameList}</div>` : ''}
+    return `<div class="ferias-month-card${isCurrent ? ' current-month' : ''}">
+      <div class="ferias-month-title">${nomeMes}</div>
+      <div class="ferias-month-people">${people}</div>
     </div>`;
-  }
+  }).join('');
 
-  wrap.innerHTML = `<div class="folga-cal-wrap">
-    <div class="folga-cal-header">
-      <span class="folga-cal-title">📅 ${MESES[mes]} ${ano}</span>
-    </div>
-    <div class="folga-cal-grid">${cells}</div>
-  </div>`;
+  wrap.innerHTML = `<div class="ferias-months-grid">${months}</div>`;
 }
-
 /* ── Calendário de Férias (anual) ── */
 function renderFeriasCalendar() {
   const wrap = document.getElementById('ferias-calendar-view');
