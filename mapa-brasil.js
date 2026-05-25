@@ -649,6 +649,8 @@ function mapaInjetarCSS() {
 }
 
 /* ─── Montar no DOM ─────────────────────────────────────────── */
+
+/* ─── Montar no DOM (VERSÃO CORRIGIDA) ─────────────────────────── */
 function mapaMontarNoDOM() {
   const page = document.getElementById('page-dashboard');
   if (!page) return;
@@ -657,33 +659,94 @@ function mapaMontarNoDOM() {
   const container = document.createElement('div');
   container.id = 'mapa-brasil-container';
 
-  // Inserir antes do card de pausas (dash-pausas-full-card)
+  // Inserir antes do card de pausas
   const pausasCard = page.querySelector('.dash-pausas-full-card');
   if (pausasCard) pausasCard.before(container);
   else page.appendChild(container);
 
   mapaInjetarCSS();
-  renderMapaBrasil();
+  
+  // ✅ CORREÇÃO: Aguardar dados antes de renderizar
+  waitForMapaDataThenRender();
 }
 
-/* ─── Auto-refresh ──────────────────────────────────────────── */
+/* ─── Aguardar dados estarem prontos ─────────────────────────── */
+function waitForMapaDataThenRender() {
+  let attempts = 0;
+  const maxAttempts = 50; // 5 segundos máximo
+  
+  function checkData() {
+    attempts++;
+    
+    const pitstopColabs = JSON.parse(localStorage.getItem('pitstop_colaboradores') || '[]');
+    const pevColabs = JSON.parse(localStorage.getItem('pev_colaboradores') || '[]');
+    const mapaEstados = JSON.parse(localStorage.getItem('mapa_estados_pitstop') || '{}');
+    
+    // Mapa precisa de pelo menos um dos dois: PEV ou estados mapeados
+    const hasPitStop = pitstopColabs.length > 0 && Object.keys(mapaEstados).length > 0;
+    const hasPev = pevColabs.length > 0;
+    const hasData = hasPitStop || hasPev;
+    
+    if (hasData) {
+      console.log('✅ Mapa: Dados prontos, renderizando...');
+      console.log('  - PIT STOP:', pitstopColabs.length, 'colaboradores');
+      console.log('  - PEV:', pevColabs.length, 'colaboradores');
+      console.log('  - Estados mapeados:', Object.keys(mapaEstados).length);
+      renderMapaBrasil();
+      
+      // Se PEV ainda não tem dados, escuta evento
+      if (!hasPev) {
+        console.log('⏳ Mapa: Aguardando dados PEV...');
+        window.addEventListener('pev-data-ready', () => {
+          console.log('🔄 Mapa: PEV chegou, re-renderizando...');
+          renderMapaBrasil();
+        }, { once: true });
+      }
+    } else if (attempts < maxAttempts) {
+      // Tenta novamente em 100ms
+      setTimeout(checkData, 100);
+    } else {
+      console.warn('⚠️ Mapa: Timeout aguardando dados');
+      console.warn('  Renderizando mapa vazio...');
+      renderMapaBrasil(); // Renderiza vazio para não quebrar UI
+    }
+  }
+  
+  checkData();
+}
+
+/* ─── Auto-refresh (VERSÃO MELHORADA) ──────────────────────────── */
 function mapaStartAutoRefresh() {
-  // Atualiza quando dados mudam
+  // Atualiza quando dados mudam em OUTRAS abas
   window.addEventListener('storage', (e) => {
     if (e.key && (
       e.key === 'pitstop_colaboradores' ||
       e.key === 'pev_colaboradores' ||
       e.key === 'pitstop_flags' ||
       e.key === 'mapa_estados_pitstop'
-    )) renderMapaBrasil();
+    )) {
+      console.log('🔄 Mapa: Storage mudou, atualizando...');
+      renderMapaBrasil();
+    }
   });
+  
+  // Escuta eventos customizados
+  window.addEventListener('system-data-ready', (e) => {
+    if (e.detail && e.detail.allReady) {
+      console.log('🎉 Mapa: Todos dados prontos, renderizando...');
+      renderMapaBrasil();
+    }
+  });
+  
   // Atualiza ao abrir o dashboard
   document.querySelectorAll('.tab[data-tab="dashboard"]').forEach(btn => {
     btn.addEventListener('click', () => setTimeout(renderMapaBrasil, 100));
   });
+  
+  console.log('✅ Mapa: Auto-refresh configurado');
 }
 
-/* ─── Init ──────────────────────────────────────────────────── */
+/* ─── Init (VERSÃO MELHORADA) ──────────────────────────────────── */
 (function initMapaBrasil() {
   function doMount() {
     setTimeout(() => {
@@ -691,6 +754,7 @@ function mapaStartAutoRefresh() {
       mapaStartAutoRefresh();
     }, 500);
   }
+  
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', doMount);
   } else {
@@ -698,4 +762,5 @@ function mapaStartAutoRefresh() {
   }
 })();
 
+// API pública para refresh manual
 window.MapaBrasil_refresh = renderMapaBrasil;
