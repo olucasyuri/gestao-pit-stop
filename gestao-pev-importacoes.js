@@ -79,17 +79,33 @@ async function PEV_aprovarImportacao(id) {
   const item = PEV_importacoes.find(x => x.id === id);
   if (!item) return;
 
-  const updated = { ...item, status: 'aprovado', status_em: new Date().toISOString() };
-  const saved = await PEV_saveImportacao(updated);
-  const idx = PEV_importacoes.findIndex(x => x.id === id);
-  if (idx >= 0) PEV_importacoes[idx] = saved || updated;
+  try {
+    // Chama a API server-side: ela atualiza o status no Supabase E envia a DM
+    // via Hermes usando o discord_id que já está salvo no próprio registro
+    const res = await fetch('/api/pev-importacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'aprovar', id }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
 
-  PEV_renderImportacoes();
-  PEV_updateImportCount();
-  if (typeof toast === 'function') toast('✅ Solicitação aprovada!');
+    // Atualiza cache local com o retorno da API
+    const saved = json.data || { ...item, status: 'aprovado', status_em: new Date().toISOString() };
+    const idx = PEV_importacoes.findIndex(x => x.id === id);
+    if (idx >= 0) PEV_importacoes[idx] = saved;
 
-  // Notificar colaborador via Discord DM
-  await PEV_notificarColaborador(saved || updated, 'aprovado');
+    PEV_renderImportacoes();
+    PEV_updateImportCount();
+
+    const dmOk = json.hermes?.ok !== false;
+    if (typeof toast === 'function') {
+      toast(dmOk ? '✅ Aprovado! DM enviada no Discord.' : '✅ Aprovado! (DM não enviada — discord_id ausente no registro)');
+    }
+  } catch (e) {
+    console.error('[PEV] Erro ao aprovar via API:', e);
+    if (typeof toast === 'function') toast('⚠️ Erro ao aprovar: ' + e.message);
+  }
 }
 
 async function PEV_reprovarImportacao(id) {
@@ -98,17 +114,30 @@ async function PEV_reprovarImportacao(id) {
 
   const motivo = prompt('Motivo da reprovação (opcional):') ?? '';
 
-  const updated = { ...item, status: 'reprovado', status_em: new Date().toISOString(), motivo_reprovacao: motivo.trim() };
-  const saved = await PEV_saveImportacao(updated);
-  const idx = PEV_importacoes.findIndex(x => x.id === id);
-  if (idx >= 0) PEV_importacoes[idx] = saved || updated;
+  try {
+    const res = await fetch('/api/pev-importacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reprovar', id, motivo_reprovacao: motivo.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
 
-  PEV_renderImportacoes();
-  PEV_updateImportCount();
-  if (typeof toast === 'function') toast('❌ Solicitação reprovada.');
+    const saved = json.data || { ...item, status: 'reprovado', status_em: new Date().toISOString(), motivo_reprovacao: motivo.trim() };
+    const idx = PEV_importacoes.findIndex(x => x.id === id);
+    if (idx >= 0) PEV_importacoes[idx] = saved;
 
-  // Notificar colaborador via Discord DM
-  await PEV_notificarColaborador(saved || updated, 'reprovado');
+    PEV_renderImportacoes();
+    PEV_updateImportCount();
+
+    const dmOk = json.hermes?.ok !== false;
+    if (typeof toast === 'function') {
+      toast(dmOk ? '❌ Reprovado. DM enviada no Discord.' : '❌ Reprovado. (DM não enviada — discord_id ausente no registro)');
+    }
+  } catch (e) {
+    console.error('[PEV] Erro ao reprovar via API:', e);
+    if (typeof toast === 'function') toast('⚠️ Erro ao reprovar: ' + e.message);
+  }
 }
 
 async function PEV_notificarColaborador(item, statusNovo) {
