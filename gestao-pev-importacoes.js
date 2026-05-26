@@ -112,25 +112,45 @@ async function PEV_reprovarImportacao(id) {
 }
 
 async function PEV_notificarColaborador(item, statusNovo) {
-  // Tenta encontrar discord_id do colaborador na lista global de colaboradores
   let discord_id = item.discord_id || '';
-  let nomeColab  = item.discord_user || item.discord_nome || '';
+  let nomeColab  = item.discord_nome || item.discord_user || '';
 
-  if (!discord_id && typeof colaboradores !== 'undefined') {
-    // Busca pelo nome no Discord ou nome completo
-    const colab = colaboradores.find(c =>
-      (item.discord_user && c.nome && c.nome.toLowerCase() === item.discord_user.toLowerCase()) ||
-      (item.discord_nome && c.nome && c.nome.toLowerCase() === item.discord_nome.toLowerCase())
-    );
-    if (colab) {
-      discord_id = colab.discord_id || '';
+  if (!discord_id) {
+    // Monta lista unificada: PEV_colabs + cache localStorage + colaboradores PIT STOP
+    const colabsPEV = typeof PEV_colabs !== 'undefined' ? PEV_colabs : [];
+    let todasListas = [...colabsPEV];
+    try {
+      const cache = JSON.parse(localStorage.getItem('pev_colaboradores') || '[]');
+      cache.forEach(c => { if (!todasListas.find(x => x.id === c.id)) todasListas.push(c); });
+    } catch(_) {}
+    if (typeof colaboradores !== 'undefined' && Array.isArray(colaboradores)) {
+      colaboradores.forEach(c => { if (!todasListas.find(x => x.id === c.id)) todasListas.push(c); });
+    }
+
+    const duLower = (item.discord_user || '').toLowerCase();
+    const dnLower = (item.discord_nome || '').toLowerCase();
+
+    const colab = todasListas.find(c => {
+      const nL  = (c.nome        || '').toLowerCase();
+      const duL = (c.discord_user || '').toLowerCase();
+      return (
+        (duLower && nL  && (nL === duLower || nL.includes(duLower) || duLower.includes(nL))) ||
+        (duLower && duL && duL === duLower) ||
+        (dnLower && nL  && (nL === dnLower || nL.includes(dnLower) || dnLower.includes(nL))) ||
+        (dnLower && duL && duL === dnLower)
+      );
+    });
+
+    if (colab && colab.discord_id) {
+      discord_id = colab.discord_id;
       nomeColab  = colab.nome || nomeColab;
+      console.log('[PEV] discord_id encontrado para', nomeColab, '→', discord_id);
     }
   }
 
   if (!discord_id) {
-    console.warn('[PEV] Colaborador sem discord_id — DM não enviada.');
-    if (typeof toast === 'function') toast('⚠️ DM não enviada: colaborador sem Discord ID.');
+    console.warn('[PEV] Colaborador sem discord_id — DM não enviada. discord_user:', item.discord_user, '| discord_nome:', item.discord_nome);
+    if (typeof toast === 'function') toast('⚠️ DM não enviada: colaborador sem Discord ID cadastrado na Equipe PEV.');
     return;
   }
 
