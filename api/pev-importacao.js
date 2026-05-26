@@ -97,7 +97,11 @@ export default async function handler(req, res) {
   const API_SECRET = process.env.API_SECRET;
   if (API_SECRET) {
     const provided = req.headers['x-api-secret'] || req.query.secret;
-    if (provided !== API_SECRET) {
+    // Actions internas do dashboard (aprovar/reprovar) não exigem secret —
+    // são operações do gestor no próprio site, não chamadas externas do bot.
+    const action = req.body?.action || req.query?.action || '';
+    const isInternalAction = ['aprovar', 'reprovar', 'toggle-agendado'].includes(action);
+    if (!isInternalAction && provided !== API_SECRET) {
       return res.status(401).json({ error: 'Não autorizado.' });
     }
   }
