@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     // Actions internas do dashboard (aprovar/reprovar) não exigem secret —
     // são operações do gestor no próprio site, não chamadas externas do bot.
     const action = req.body?.action || req.query?.action || '';
-    const isInternalAction = ['aprovar', 'reprovar', 'toggle-agendado'].includes(action);
+    const isInternalAction = ['aprovar', 'reprovar', 'toggle-agendado'].includes(action) || req.method === 'DELETE';
     if (!isInternalAction && provided !== API_SECRET) {
       return res.status(401).json({ error: 'Não autorizado.' });
     }
