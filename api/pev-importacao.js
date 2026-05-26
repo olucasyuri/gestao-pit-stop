@@ -146,9 +146,14 @@ export default async function handler(req, res) {
         const { id } = req.body || {};
         if (!id) return res.status(400).json({ error: 'id obrigatório.' });
 
+        // Busca o registro completo ANTES do PATCH para ter discord_id, discord_nome, etc.
+        const registros = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`);
+        const registroOriginal = Array.isArray(registros) ? registros[0] : registros;
+
         const updates = { status: 'aprovado', status_em: new Date().toISOString() };
         const data = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
-        const item = Array.isArray(data) ? data[0] : data;
+        // Mescla o registro original com os campos atualizados para ter todos os campos
+        const item = { ...registroOriginal, ...(Array.isArray(data) ? data[0] : data), ...updates };
 
         let hermesResult = null;
         try { hermesResult = await notificarViaHermes(item, 'aprovado'); }
@@ -162,16 +167,21 @@ export default async function handler(req, res) {
         const { id, motivo_reprovacao } = req.body || {};
         if (!id) return res.status(400).json({ error: 'id obrigatório.' });
 
+        // Busca o registro completo ANTES do PATCH para ter discord_id, discord_nome, etc.
+        const registros = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`);
+        const registroOriginal = Array.isArray(registros) ? registros[0] : registros;
+
         const updates = {
           status: 'reprovado',
           status_em: new Date().toISOString(),
           motivo_reprovacao: String(motivo_reprovacao || '').trim(),
         };
         const data = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
-        const item = Array.isArray(data) ? data[0] : data;
+        // Mescla o registro original com os campos atualizados para ter todos os campos
+        const item = { ...registroOriginal, ...(Array.isArray(data) ? data[0] : data), ...updates };
 
         let hermesResult = null;
-        try { hermesResult = await notificarViaHermes({ ...item, ...updates }, 'reprovado'); }
+        try { hermesResult = await notificarViaHermes(item, 'reprovado'); }
         catch (he) { console.warn('[pev-importacao] DM falhou:', he.message); }
 
         return res.status(200).json({ ok: true, data: item, hermes: hermesResult });
