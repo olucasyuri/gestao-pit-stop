@@ -102,11 +102,12 @@
       if (data && data.length > 0) {
         // Normaliza para o formato esperado pelo gestao-pev.js
         const colabs = data.map(c => ({
-          id:      c.id,
-          nome:    c.nome,
-          horario: c.horario || '08h - 18h',
-          regiao:  c.regiao  || '',
-          almoco:  c.almoco  || '12:00',
+          id:         c.id,
+          nome:       c.nome,
+          horario:    c.horario    || '08h - 18h',
+          regiao:     c.regiao     || '',
+          almoco:     c.almoco     || '12:00',
+          discord_id: c.discord_id || '',
         }));
         localStorage.setItem('pev_colaboradores', JSON.stringify(colabs));
         console.log('✅ PEV: carregados', colabs.length, 'colaboradores do Supabase');
