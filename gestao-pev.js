@@ -154,10 +154,28 @@ const PEV_EXT_OPTS = [
 
 /* ── Escala — render por regiões ─────────────────────────── */
 function PEV_getRegioes() {
+  // Ordem fixa das regiões na escala PEV
+  const ORDEM_REGIOES = [
+    "Aracaju",
+    "São Luiz",
+    "Ipatinga / Teófilo Otoni",
+    "Juazeiro do Norte",
+    "Ribeirão Preto",
+    "Goiânia",
+    "Cuiabá"
+  ];
   const seen = new Set();
   const regioes = [];
   PEV_colabs.forEach(c => { if (!seen.has(c.regiao)) { seen.add(c.regiao); regioes.push(c.regiao); } });
-  return regioes;
+  // Ordena conforme a lista fixa; regiões não listadas ficam ao final
+  return regioes.sort((a, b) => {
+    const ia = ORDEM_REGIOES.indexOf(a);
+    const ib = ORDEM_REGIOES.indexOf(b);
+    if (ia === -1 && ib === -1) return 0;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
 }
 
 function PEV_regionColor(regiao) {
