@@ -1,6 +1,7 @@
 /**
  * Gestão PEV — Módulo de Importações Discord
- * Tela limpa e profissional: mostra apenas o que o gestor precisa ver.
+ * Com fluxo de aprovação: Pendente → Aprovado / Reprovado
+ * Notifica o colaborador via DM no Discord (Hermes) ao aprovar ou reprovar.
  */
 "use strict";
 
@@ -50,13 +51,128 @@ async function PEV_saveImportacao(item) {
 
 async function PEV_deleteImportacao(id) {
   if (typeof supa !== 'undefined' && supa) {
-    try {
-      const { error } = await supa.from('pev_importacoes').delete().eq('id', id);
-      if (error) throw error;
-    } catch(e) { /* fallback */ }
+    const { error } = await supa.from('pev_importacoes').delete().eq('id', id);
+    if (error) throw new Error('Erro ao excluir no banco: ' + (error.message || error));
   }
   PEV_importacoes = PEV_importacoes.filter(x => x.id !== id);
   localStorage.setItem(PEV_IMPORT_STORAGE_KEY, JSON.stringify(PEV_importacoes));
+}
+
+
+/* ── Toggle Agendamento com Setor ────────────────────────── */
+async function PEV_toggleAgendado(id) {
+  const item = PEV_importacoes.find(x => x.id === id);
+  if (!item) return;
+  const novoValor = (item.agendado === 'sim') ? 'nao' : 'sim';
+  const updated = { ...item, agendado: novoValor };
+  const saved = await PEV_saveImportacao(updated);
+  const idx = PEV_importacoes.findIndex(x => x.id === id);
+  if (idx >= 0) PEV_importacoes[idx] = saved || updated;
+  PEV_renderImportacoes();
+  PEV_updateImportCount();
+  const msg = novoValor === 'sim' ? '📅 Marcado como agendado!' : '⏳ Marcado como aguardando agendamento.';
+  if (typeof toast === 'function') toast(msg);
+}
+
+/* ── Aprovação / Reprovação ──────────────────────────────── */
+async function PEV_aprovarImportacao(id) {
+  const item = PEV_importacoes.find(x => x.id === id);
+  if (!item) return;
+
+  const updated = { ...item, status: 'aprovado', status_em: new Date().toISOString() };
+  const saved = await PEV_saveImportacao(updated);
+  const idx = PEV_importacoes.findIndex(x => x.id === id);
+  if (idx >= 0) PEV_importacoes[idx] = saved || updated;
+
+  PEV_renderImportacoes();
+  PEV_updateImportCount();
+  if (typeof toast === 'function') toast('✅ Solicitação aprovada!');
+
+  // Notificar colaborador via Discord DM
+  await PEV_notificarColaborador(saved || updated, 'aprovado');
+}
+
+async function PEV_reprovarImportacao(id) {
+  const item = PEV_importacoes.find(x => x.id === id);
+  if (!item) return;
+
+  const motivo = prompt('Motivo da reprovação (opcional):') ?? '';
+
+  const updated = { ...item, status: 'reprovado', status_em: new Date().toISOString(), motivo_reprovacao: motivo.trim() };
+  const saved = await PEV_saveImportacao(updated);
+  const idx = PEV_importacoes.findIndex(x => x.id === id);
+  if (idx >= 0) PEV_importacoes[idx] = saved || updated;
+
+  PEV_renderImportacoes();
+  PEV_updateImportCount();
+  if (typeof toast === 'function') toast('❌ Solicitação reprovada.');
+
+  // Notificar colaborador via Discord DM
+  await PEV_notificarColaborador(saved || updated, 'reprovado');
+}
+
+async function PEV_notificarColaborador(item, statusNovo) {
+  // Tenta encontrar discord_id do colaborador na lista global de colaboradores
+  let discord_id = item.discord_id || '';
+  let nomeColab  = item.discord_user || item.discord_nome || '';
+
+  if (!discord_id && typeof colaboradores !== 'undefined') {
+    // Busca pelo nome no Discord ou nome completo
+    const colab = colaboradores.find(c =>
+      (item.discord_user && c.nome && c.nome.toLowerCase() === item.discord_user.toLowerCase()) ||
+      (item.discord_nome && c.nome && c.nome.toLowerCase() === item.discord_nome.toLowerCase())
+    );
+    if (colab) {
+      discord_id = colab.discord_id || '';
+      nomeColab  = colab.nome || nomeColab;
+    }
+  }
+
+  if (!discord_id) {
+    console.warn('[PEV] Colaborador sem discord_id — DM não enviada.');
+    if (typeof toast === 'function') toast('⚠️ DM não enviada: colaborador sem Discord ID.');
+    return;
+  }
+
+  const emoji   = statusNovo === 'aprovado' ? '✅' : '❌';
+  const titulo  = statusNovo === 'aprovado'
+    ? '✅ Sua solicitação de importação foi APROVADA!'
+    : '❌ Sua solicitação de importação foi REPROVADA.';
+
+  let mensagem = `Olá, ${nomeColab}! Sua solicitação de importação de dados foi analisada.\n\n`;
+  mensagem += `**Empresa:** ${item.empresa || '—'}\n`;
+  mensagem += `**CNPJ:** ${item.cnpj || '—'}\n`;
+  if (item.data_virada) {
+    const dv = new Date(item.data_virada + 'T00:00:00').toLocaleDateString('pt-BR');
+    mensagem += `**Virada do sistema:** ${dv}\n`;
+  }
+  mensagem += `\n**Status: ${emoji} ${statusNovo === 'aprovado' ? 'APROVADO' : 'REPROVADO'}**`;
+  if (statusNovo === 'reprovado' && item.motivo_reprovacao) {
+    mensagem += `\n**Motivo:** ${item.motivo_reprovacao}`;
+  }
+  mensagem += `\n\nQualquer dúvida, fale com a gestão. 🚗`;
+
+  try {
+    const fn = typeof sendHermes === 'function' ? sendHermes : PEV_sendHermesLocal;
+    await fn('pitstop-mensagem', { discord_id, nome: nomeColab, mensagem });
+    if (typeof toast === 'function') toast(`${emoji} DM enviada para ${nomeColab} no Discord.`);
+  } catch (e) {
+    console.error('[PEV] Erro ao enviar DM via Hermes:', e);
+    if (typeof toast === 'function') toast('⚠️ Status salvo, mas DM falhou: ' + e.message);
+  }
+}
+
+async function PEV_sendHermesLocal(tipo, payload) {
+  const response = await fetch('/api/hermes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipo, ...payload }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${response.status}`);
+  }
+  return response.json();
 }
 
 /* ── Render ──────────────────────────────────────────────── */
@@ -70,14 +186,17 @@ function PEV_renderImportacoes() {
 
   const items = PEV_importacoes.filter(item => {
     const matchSearch = !search || item.empresa?.toLowerCase().includes(search) || item.cnpj?.toLowerCase().includes(search);
-    const matchFilter = !filter || item.importacao === filter;
+    let matchFilter = true;
+    if (filter) {
+      if (filter === 'agendado')     matchFilter = item.agendado === 'sim';
+      else if (filter === 'nao-agendado') matchFilter = (!item.agendado || item.agendado === 'nao') && item.status === 'aprovado';
+      else matchFilter = item.importacao === filter || item.status === filter;
+    }
     return matchSearch && matchFilter;
   });
 
-  // Update stats
   PEV_renderImportStats();
 
-  // Remove old cards
   Array.from(list.children).forEach(ch => {
     if (!ch.id) ch.remove();
   });
@@ -99,6 +218,7 @@ function PEV_renderImportacoes() {
     card.className = 'pev-import-card';
     card.dataset.id = item.id;
     card.dataset.import = item.importacao;
+    card.dataset.status = item.status || 'pendente';
 
     const dataStr = item.criado_em
       ? new Date(item.criado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
@@ -108,11 +228,51 @@ function PEV_renderImportacoes() {
       ? new Date(item.data_virada + 'T00:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })
       : null;
 
-    const discordTag = item.discord_user
+    // Status badge
+    const status = item.status || 'pendente';
+    const statusMap = {
+      pendente:  { label: '🕐 Pendente',  cls: 'pendente' },
+      aprovado:  { label: '✅ Aprovado',  cls: 'aprovado' },
+      reprovado: { label: '❌ Reprovado', cls: 'reprovado' },
+    };
+    const st = statusMap[status] || statusMap.pendente;
+    const statusBadge = `<span class="pev-import-status-badge ${st.cls}">${st.label}</span>`;
+
+    // Discord user tag (mostra nome no Discord ou nome encontrado)
+    const nomeExibido = item.discord_nome || item.discord_user || '';
+    const discordTag = nomeExibido
       ? `<span class="pev-import-discord-tag">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.082.114 18.1.133 18.112a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-          ${PEV_escHtml(item.discord_user)}
+          ${PEV_escHtml(nomeExibido)}
         </span>` : '';
+
+    // Botões de aprovação (apenas se pendente)
+    const aprovacaoBtns = status === 'pendente' ? `
+      <div class="pev-import-aprovacao-btns">
+        <button class="pev-btn-aprovar" data-aprovar="${item.id}" title="Aprovar solicitação" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Aprovar
+        </button>
+        <button class="pev-btn-reprovar" data-reprovar="${item.id}" title="Reprovar solicitação" type="button">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Reprovar
+        </button>
+      </div>` : '';
+
+    // Motivo reprovação
+    const motivoHtml = (status === 'reprovado' && item.motivo_reprovacao)
+      ? `<div class="pev-import-motivo">💬 Motivo: ${PEV_escHtml(item.motivo_reprovacao)}</div>` : '';
+
+    // Badge de agendamento com o setor
+    const agendado = item.agendado || 'nao';
+    const agendadoBadge = `<span class="pev-import-agendado-badge ${agendado === 'sim' ? 'sim' : 'nao'}" data-toggle-agendado="${item.id}" title="Clique para alternar" style="cursor:pointer">
+      ${agendado === 'sim' ? '📅 Agendado com setor' : '⏳ Aguardando agendamento'}
+    </span>`;
+
+    // Status em
+    const statusEmStr = item.status_em
+      ? new Date(item.status_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : null;
 
     card.innerHTML = `
       <div class="pev-import-card-body">
@@ -120,14 +280,19 @@ function PEV_renderImportacoes() {
           <span class="pev-import-badge ${item.importacao === 'sim' ? 'sim' : 'nao'}">
             ${item.importacao === 'sim' ? '📥 Com importação' : '📭 Sem importação'}
           </span>
+          ${statusBadge}
           ${discordTag}
         </div>
         <div class="pev-import-empresa">${PEV_escHtml(item.empresa || '—')}</div>
         <div class="pev-import-cnpj">${PEV_escHtml(item.cnpj || '—')}</div>
         ${dataViradaStr ? `<div class="pev-import-virada">📅 Virada do sistema: <strong>${dataViradaStr}</strong></div>` : ''}
         ${item.obs ? `<div class="pev-import-obs">📝 ${PEV_escHtml(item.obs)}</div>` : ''}
+        ${motivoHtml}
+        <div style="margin:6px 0 2px;">${agendadoBadge}</div>
+        ${aprovacaoBtns}
         <div class="pev-import-meta">
-          <span>${dataStr}</span>
+          <span>Solicitado: ${dataStr}</span>
+          ${statusEmStr ? `<span>${status === 'aprovado' ? '✅ Aprovado' : '❌ Reprovado'}: ${statusEmStr}</span>` : ''}
         </div>
       </div>
       <div class="pev-import-actions">
@@ -140,14 +305,29 @@ function PEV_renderImportacoes() {
       </div>
     `;
 
+    // Eventos
     card.querySelector('[data-edit-import]').onclick = () => PEV_openEditImportacao(item.id);
     card.querySelector('[data-del-import]').onclick = async () => {
       if (!confirm(`Excluir registro de "${item.empresa}"?`)) return;
-      await PEV_deleteImportacao(item.id);
-      PEV_renderImportacoes();
-      PEV_updateImportCount();
-      if (typeof toast === 'function') toast('🗑 Registro excluído.');
+      try {
+        await PEV_deleteImportacao(item.id);
+        PEV_renderImportacoes();
+        PEV_updateImportCount();
+        if (typeof toast === 'function') toast('🗑 Registro excluído.');
+      } catch(e) {
+        console.error('[PEV] Erro ao excluir:', e);
+        if (typeof toast === 'function') toast('❌ Erro ao excluir: ' + e.message);
+      }
     };
+
+    const btnAprovar  = card.querySelector('[data-aprovar]');
+    const btnReprovar = card.querySelector('[data-reprovar]');
+    if (btnAprovar)  btnAprovar.onclick  = () => PEV_aprovarImportacao(item.id);
+    if (btnReprovar) btnReprovar.onclick = () => PEV_reprovarImportacao(item.id);
+
+    const btnAgendado = card.querySelector('[data-toggle-agendado]');
+    if (btnAgendado) btnAgendado.onclick = () => PEV_toggleAgendado(item.id);
+
     list.appendChild(card);
   });
 }
@@ -155,9 +335,12 @@ function PEV_renderImportacoes() {
 function PEV_renderImportStats() {
   const el = document.getElementById('pev-import-stats');
   if (!el) return;
-  const total = PEV_importacoes.length;
-  const sim   = PEV_importacoes.filter(i => i.importacao === 'sim').length;
-  const nao   = PEV_importacoes.filter(i => i.importacao === 'nao').length;
+  const total    = PEV_importacoes.length;
+  const sim      = PEV_importacoes.filter(i => i.importacao === 'sim').length;
+  const nao      = PEV_importacoes.filter(i => i.importacao === 'nao').length;
+  const pendente = PEV_importacoes.filter(i => !i.status || i.status === 'pendente').length;
+  const agendados    = PEV_importacoes.filter(i => i.agendado === 'sim').length;
+  const naoAgendados = PEV_importacoes.filter(i => (!i.agendado || i.agendado === 'nao') && i.status === 'aprovado').length;
   el.innerHTML = `
     <div class="pev-import-stat">
       <span class="pev-import-stat-num">${total}</span>
@@ -171,15 +354,32 @@ function PEV_renderImportStats() {
       <span class="pev-import-stat-num">${nao}</span>
       <span class="pev-import-stat-lbl">Sem importação</span>
     </div>
+    ${pendente > 0 ? `
+    <div class="pev-import-stat pendente">
+      <span class="pev-import-stat-num">${pendente}</span>
+      <span class="pev-import-stat-lbl">Pendentes</span>
+    </div>` : ''}
+    ${naoAgendados > 0 ? `
+    <div class="pev-import-stat nao-agendado">
+      <span class="pev-import-stat-num">${naoAgendados}</span>
+      <span class="pev-import-stat-lbl">Falta agendar</span>
+    </div>` : ''}
+    ${agendados > 0 ? `
+    <div class="pev-import-stat agendado">
+      <span class="pev-import-stat-num">${agendados}</span>
+      <span class="pev-import-stat-lbl">Agendados</span>
+    </div>` : ''}
   `;
 }
 
 function PEV_updateImportCount() {
   const badge = document.getElementById('pev-import-count');
   if (!badge) return;
-  const n = PEV_importacoes.length;
-  badge.textContent = n;
-  badge.style.display = n > 0 ? 'inline-flex' : 'none';
+  const pendentes = PEV_importacoes.filter(i => !i.status || i.status === 'pendente').length;
+  badge.textContent = pendentes || PEV_importacoes.length;
+  badge.style.display = PEV_importacoes.length > 0 ? 'inline-flex' : 'none';
+  // Destaca badge quando há pendentes
+  badge.classList.toggle('has-pending', pendentes > 0);
 }
 
 /* ── Modal ───────────────────────────────────────────────── */
@@ -217,11 +417,18 @@ async function PEV_saveImportacaoModal() {
   if (!data_virada) { alert('Informe a data da virada do sistema.'); return; }
 
   const editingId = document.getElementById('pev-import-editing-id').value;
+  const existing  = editingId ? PEV_importacoes.find(x => x.id === editingId) : null;
   const item = {
     id: editingId || PEV_genId(),
     empresa, cnpj: PEV_formatCNPJ(cnpj), importacao, data_virada, obs,
-    discord_user: editingId ? (PEV_importacoes.find(x=>x.id===editingId)?.discord_user || '') : '',
-    criado_em: editingId ? (PEV_importacoes.find(x=>x.id===editingId)?.criado_em || new Date().toISOString()) : new Date().toISOString(),
+    discord_user: existing?.discord_user || '',
+    discord_nome: existing?.discord_nome || '',
+    discord_id:   existing?.discord_id   || '',
+    status:       existing?.status       || 'pendente',
+    status_em:    existing?.status_em    || null,
+    motivo_reprovacao: existing?.motivo_reprovacao || '',
+    agendado:     existing?.agendado     || 'nao',
+    criado_em: existing?.criado_em || new Date().toISOString(),
   };
 
   const saved = await PEV_saveImportacao(item);
@@ -237,6 +444,14 @@ async function PEV_saveImportacaoModal() {
 }
 
 /* ── Receber do Discord Bot ──────────────────────────────── */
+/**
+ * Chamado quando o bot Discord recebe /importação de dados.
+ * payload deve incluir:
+ *   - empresa, cnpj, importacao, data_virada, obs
+ *   - discord_user   : username no Discord (ex: "joao.silva")
+ *   - discord_nome   : display name no Discord (ex: "João Silva") — preferido para exibição
+ *   - discord_id     : ID numérico do usuário no Discord — necessário para enviar DM
+ */
 async function PEV_receberDoDiscord(payload) {
   const item = {
     id: PEV_genId(),
@@ -245,14 +460,21 @@ async function PEV_receberDoDiscord(payload) {
     importacao: payload.importacao === 'sim' ? 'sim' : 'nao',
     data_virada: payload.data_virada || '',
     obs: payload.obs || '',
-    discord_user: payload.discord_user || '',
+    discord_user: payload.discord_user || '',        // username Discord
+    discord_nome: payload.discord_nome || payload.discord_user || '', // display name
+    discord_id:   payload.discord_id   || '',        // ID para DM
+    status: 'pendente',
+    status_em: null,
+    motivo_reprovacao: '',
+    agendado: 'nao',
     criado_em: new Date().toISOString(),
   };
   await PEV_saveImportacao(item);
   PEV_importacoes.unshift(item);
   PEV_renderImportacoes();
   PEV_updateImportCount();
-  if (typeof toast === 'function') toast(`📥 Nova importação: ${item.empresa}`);
+  const nomeExib = item.discord_nome || item.discord_user || item.empresa;
+  if (typeof toast === 'function') toast(`📥 Nova solicitação de ${nomeExib}`);
   return item;
 }
 window.PEV_receberDoDiscord = PEV_receberDoDiscord;
