@@ -69,7 +69,7 @@ async function PEV_saveColabSupabase(colab) {
     }
     const { error } = await supa
       .from('pev_colaboradores')
-      .upsert({ id: colab.id, nome: colab.nome, horario: colab.horario, regiao: colab.regiao, almoco: colab.almoco, ativo: true }, { onConflict: 'id' });
+      .upsert({ id: colab.id, nome: colab.nome, horario: colab.horario, regiao: colab.regiao, almoco: colab.almoco, discord_id: colab.discord_id || '', ativo: true }, { onConflict: 'id' });
     if (error) throw error;
     console.log('✅ PEV Supabase: colaborador salvo —', colab.nome);
   } catch (e) {
@@ -525,34 +525,36 @@ function PEV_openEditColab(idx) {
   document.getElementById('pev-colab-horario').value = c.horario;
   document.getElementById('pev-colab-almoco').value = c.almoco;
   document.getElementById('pev-colab-regiao').value = c.regiao;
+  document.getElementById('pev-colab-discord-id').value = c.discord_id || '';
   PEV_openModal('pev-modal-colab');
 }
 function PEV_openAddColab() {
   PEV_editingColabIdx = null;
   document.getElementById('pev-colab-modal-title').textContent = 'Adicionar Colaborador';
-  ['pev-colab-nome','pev-colab-horario','pev-colab-regiao'].forEach(id => document.getElementById(id).value = '');
+  ['pev-colab-nome','pev-colab-horario','pev-colab-regiao','pev-colab-discord-id'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pev-colab-almoco').value = '12:00';
   PEV_openModal('pev-modal-colab');
 }
 function PEV_saveColab() {
-  const nome    = document.getElementById('pev-colab-nome').value.trim();
-  const horario = document.getElementById('pev-colab-horario').value.trim();
-  const almoco  = document.getElementById('pev-colab-almoco').value;
-  const regiao  = document.getElementById('pev-colab-regiao').value.trim();
+  const nome       = document.getElementById('pev-colab-nome').value.trim();
+  const horario    = document.getElementById('pev-colab-horario').value.trim();
+  const almoco     = document.getElementById('pev-colab-almoco').value;
+  const regiao     = document.getElementById('pev-colab-regiao').value.trim();
+  const discord_id = document.getElementById('pev-colab-discord-id').value.trim();
   if (!nome || !horario) { alert('Preencha nome e horário.'); return; }
   if (!regiao) { alert('Selecione uma região.'); return; }
 
   if (PEV_editingColabIdx !== null) {
     // Edição: preserva o id existente para o upsert funcionar
     const idExistente = PEV_colabs[PEV_editingColabIdx].id;
-    const obj = { id: idExistente, nome, horario, almoco, regiao };
+    const obj = { id: idExistente, nome, horario, almoco, regiao, discord_id };
     PEV_colabs[PEV_editingColabIdx] = obj;
     PEV_saveColabSupabase(obj);
   } else {
     // Novo: gera id local (Supabase vai confirmar/substituir pelo upsert)
     const obj = {
       id: 'pev_colab_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      nome, horario, almoco, regiao,
+      nome, horario, almoco, regiao, discord_id,
     };
     PEV_colabs.push(obj);
     PEV_escalaState[nome] = {status:'none', ext:'dia', obs:''};
