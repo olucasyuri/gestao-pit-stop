@@ -50,10 +50,15 @@ async function PEV_saveImportacao(item) {
 }
 
 async function PEV_deleteImportacao(id) {
-  if (typeof supa !== 'undefined' && supa) {
-    const { error } = await supa.from('pev_importacoes').delete().eq('id', id);
-    if (error) throw new Error('Erro ao excluir no banco: ' + (error.message || error));
-  }
+  // Usa a API server-side (service role key) para garantir permissão de DELETE no banco
+  const res = await fetch('/api/pev-importacao', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+
   PEV_importacoes = PEV_importacoes.filter(x => x.id !== id);
   localStorage.setItem(PEV_IMPORT_STORAGE_KEY, JSON.stringify(PEV_importacoes));
 }
