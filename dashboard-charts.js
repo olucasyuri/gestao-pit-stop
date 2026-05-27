@@ -59,6 +59,39 @@ async function carregarFolgasSupabase() {
   // Fallback para localStorage
   return JSON.parse(localStorage.getItem('pitstop_folgas') || '[]');
 }
+async function carregarPendenciasSupabase() {
+  try {
+    if (typeof supa !== 'undefined' && supa) {
+      const { data, error } = await supa
+        .from('pitstop_pendencias')
+        .select('*')
+        .order('criado_em', { ascending: false });
+      if (error) throw error;
+      console.log('\u2705 Pend\u00eancias carregadas do Supabase:', (data||[]).length);
+      return data || [];
+    }
+  } catch (e) {
+    console.error('\u274c Erro ao carregar pend\u00eancias do Supabase:', e);
+  }
+  return JSON.parse(localStorage.getItem('pitstop_pendencias') || '[]');
+}
+
+async function carregarImportacoesSupabase() {
+  try {
+    if (typeof supa !== 'undefined' && supa) {
+      const { data, error } = await supa
+        .from('pev_importacoes')
+        .select('*')
+        .order('criado_em', { ascending: false });
+      if (error) throw error;
+      console.log('\u2705 Importa\u00e7\u00f5es carregadas do Supabase:', (data||[]).length);
+      return data || [];
+    }
+  } catch (e) {
+    console.error('\u274c Erro ao carregar importa\u00e7\u00f5es do Supabase:', e);
+  }
+  return JSON.parse(localStorage.getItem('pev_importacoes_v1') || '[]');
+}
 
 function lerDados() {
   function tryParse(key, def) {
@@ -189,15 +222,17 @@ async function renderDashboardCharts() {
   }
 
   // Carrega folgas do Supabase primeiro
-  var folgasSupabase = await carregarFolgasSupabase();
+  var folgasSupabase     = await carregarFolgasSupabase();
+  var pendenciasSupabase = await carregarPendenciasSupabase();
+  var importacoesSupabase = await carregarImportacoesSupabase();
 
   var dados = lerDados();
   var colaboradores = dados.colaboradores;
   var folgas        = folgasSupabase.length > 0 ? folgasSupabase : dados.folgas; // Prioriza Supabase
   var pausas        = dados.pausas;
-  var pendencias    = dados.pendencias;
+  var pendencias    = pendenciasSupabase.length > 0 ? pendenciasSupabase : dados.pendencias; // Prioriza Supabase
   var flags         = dados.flags;
-  var importacoes   = dados.importacoes;
+  var importacoes   = importacoesSupabase.length > 0 ? importacoesSupabase : dados.importacoes; // Prioriza Supabase
   var dias          = ultimosDias(7);
   var today         = new Date().toISOString().slice(0, 10);
 
