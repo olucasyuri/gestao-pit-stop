@@ -102,6 +102,15 @@
           <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           Treinamentos
         </button>
+        <div class="sidebar-section-label sidebar-section-label--inner">ANÁLISE</div>
+
+        <button class="tab" data-tab="relatorios" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          Relatórios
+        </button>
+
         <div class="sidebar-section-label sidebar-section-label--inner">ESCALAS</div>
 
         <button class="tab" data-tab="fds" role="tab" aria-selected="false">
@@ -707,6 +716,73 @@
       </section>
 
       <!-- ═══════════════════════════════════════════════ -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- RELATÓRIOS                                      -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <section class="page" id="page-relatorios" role="tabpanel">
+
+        <div class="pev-hero" style="padding-bottom:14px;">
+          <div class="pev-hero-inner">
+            <p class="eyebrow">Acompanhamento</p>
+            <h1>Relatórios <span class="pev-accent">da Equipe</span></h1>
+            <p class="muted">Resumo de ausências, atestados, folgas e presença por período.</p>
+          </div>
+        </div>
+
+        <!-- Filtro de período -->
+        <div class="card" style="padding:16px 20px;margin-bottom:18px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;opacity:.6;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">De</label>
+            <input type="date" id="rel-de" class="input" style="width:150px;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;opacity:.6;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Até</label>
+            <input type="date" id="rel-ate" class="input" style="width:150px;" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:11px;opacity:.6;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Colaborador</label>
+            <select id="rel-colab" class="input" style="width:190px;">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-rel-gerar" type="button" style="height:36px;padding:0 18px;">
+            Gerar relatório
+          </button>
+          <button class="pill" id="btn-rel-exportar" type="button" style="height:36px;padding:0 14px;margin-left:auto;" title="Exportar CSV">
+            ⬇ Exportar CSV
+          </button>
+        </div>
+
+        <!-- Cards resumo -->
+        <div id="rel-resumo" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:18px;"></div>
+
+        <!-- Tabela detalhada -->
+        <div class="card" style="overflow:hidden;">
+          <div style="padding:14px 18px;border-bottom:1px solid var(--border,#333);display:flex;align-items:center;justify-content:space-between;">
+            <h3 style="margin:0;font-size:14px;font-weight:700;">Detalhamento por colaborador</h3>
+            <span id="rel-total-badge" style="font-size:11px;opacity:.6;"></span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table id="rel-tabela" style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border,#333);">
+                  <th style="padding:10px 16px;text-align:left;opacity:.6;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap;">Colaborador</th>
+                  <th style="padding:10px 12px;text-align:center;opacity:.6;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap;">Folgas</th>
+                  <th style="padding:10px 12px;text-align:center;opacity:.6;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap;">Férias (dias)</th>
+                  <th style="padding:10px 12px;text-align:center;opacity:.6;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap;">Atestados (dias)</th>
+                  <th style="padding:10px 12px;text-align:center;opacity:.6;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap;">Total ausências</th>
+                  <th style="padding:10px 12px;text-align:center;opacity:.6;font-weight:600;font-size:11px;text-transform:uppercase;white-space:nowrap;">Status hoje</th>
+                </tr>
+              </thead>
+              <tbody id="rel-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:32px;opacity:.5;">Selecione um período e clique em Gerar relatório.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
       <!-- PEV — Setor Novo                                 -->
       <!-- ═══════════════════════════════════════════════ -->
       <section class="page" id="page-pev" role="tabpanel">

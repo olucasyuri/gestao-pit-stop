@@ -632,12 +632,16 @@ function renderIndicadoresGerenciais() {
           <span>Presentes</span>
         </div>
       </div>
-      <div class="indicador-card ind-red">
+      <div class="indicador-card ind-red" role="button" tabindex="0" title="Ver ausentes de hoje"
+           style="cursor:pointer;"
+           onclick="abrirModalAusentes()"
+           onkeydown="if(event.key==='Enter'||event.key===' ')abrirModalAusentes()">
         <div class="ind-icon">⛔</div>
         <div class="ind-body">
           <strong>${ausentes}</strong>
           <span>Ausentes</span>
         </div>
+        ${ausentes > 0 ? `<div style="font-size:9px;opacity:.7;margin-top:2px;">ver detalhes →</div>` : ''}
       </div>
       <div class="indicador-card ind-yellow">
         <div class="ind-icon">⏰</div>
@@ -665,6 +669,120 @@ function renderIndicadoresGerenciais() {
       </div>
     </div>
   `;
+}
+
+/**
+ * Abre um modal com a lista detalhada de colaboradores ausentes no dia.
+ * Exibe o motivo (OFF, férias, atestado) e — se atestado — quantos dias restam.
+ */
+function abrirModalAusentes() {
+  const hoje = todayISO();
+
+  const lista = colaboradores
+    .map(c => {
+      const f   = getFlagDefault(c.nome);
+      const at  = atestados[c.nome];
+      let motivo = null;
+      let detalhe = '';
+
+      if (f.ferias)   { motivo = 'ferias';   detalhe = 'Férias'; }
+      if (f.atestado) {
+        motivo = 'atestado';
+        if (at?.dias && at?.dataInicio) {
+          const inicio = new Date(at.dataInicio + 'T12:00:00');
+          const fim    = new Date(inicio);
+          fim.setDate(fim.getDate() + at.dias);
+          const restam = Math.ceil((fim - new Date()) / 86400000);
+          detalhe = `Atestado · ${restam > 0 ? restam + 'd restante' + (restam > 1 ? 's' : '') : 'vence hoje'}`;
+        } else {
+          detalhe = 'Atestado';
+        }
+      }
+      if (f.off)      { motivo = 'off';      detalhe = 'Day off'; }
+
+      return motivo ? { nome: c.nome, cargo: c.cargo, motivo, detalhe } : null;
+    })
+    .filter(Boolean);
+
+  // Cria ou reutiliza o modal
+  let overlay = document.getElementById('modal-ausentes-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'modal-ausentes-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+      <div id="modal-ausentes" style="
+        background:var(--bg-card,#1e1e2e);
+        border:1px solid var(--border,#333);
+        border-radius:14px;
+        width:min(420px,92vw);
+        max-height:80vh;
+        display:flex;
+        flex-direction:column;
+        overflow:hidden;
+        box-shadow:0 8px 40px rgba(0,0,0,.4);
+      ">
+        <div style="padding:18px 20px 14px;border-bottom:1px solid var(--border,#333);display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h3 style="margin:0;font-size:15px;font-weight:700;">⛔ Ausentes hoje</h3>
+            <p id="modal-ausentes-sub" style="margin:2px 0 0;font-size:12px;opacity:.6;"></p>
+          </div>
+          <button onclick="document.getElementById('modal-ausentes-overlay').style.display='none'"
+            style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted,#888);line-height:1;padding:4px;">✕</button>
+        </div>
+        <div id="modal-ausentes-list" style="overflow-y:auto;padding:14px 16px;flex:1;"></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
+  }
+
+  const ICON  = { ferias: '🌴', atestado: '🩺', off: '🔴' };
+  const COLOR = { ferias: '#34d399', atestado: '#f59e0b', off: '#f87171' };
+
+  const listEl = document.getElementById('modal-ausentes-list');
+  const subEl  = document.getElementById('modal-ausentes-sub');
+
+  subEl.textContent = lista.length
+    ? `${lista.length} colaborador${lista.length > 1 ? 'es' : ''} fora hoje`
+    : 'Nenhum colaborador ausente';
+
+  if (!lista.length) {
+    listEl.innerHTML = `
+      <div style="text-align:center;padding:32px 0;opacity:.5;">
+        <div style="font-size:36px;">✅</div>
+        <p style="margin:8px 0 0;font-size:13px;">Equipe completa hoje!</p>
+      </div>`;
+  } else {
+    listEl.innerHTML = lista.map(p => `
+      <div style="
+        display:flex;align-items:center;gap:12px;
+        padding:10px 12px;border-radius:10px;
+        background:var(--bg-alt,rgba(255,255,255,.04));
+        margin-bottom:8px;
+      ">
+        <div style="
+          width:38px;height:38px;border-radius:50%;
+          background:var(--bg-alt2,rgba(255,255,255,.08));
+          display:flex;align-items:center;justify-content:center;
+          font-size:13px;font-weight:700;flex-shrink:0;
+          color:${COLOR[p.motivo]};
+          border:2px solid ${COLOR[p.motivo]}33;
+        ">${initials(p.nome)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nome}</div>
+          <div style="font-size:11px;opacity:.6;">${p.cargo || ''}</div>
+        </div>
+        <div style="
+          font-size:11px;font-weight:600;
+          color:${COLOR[p.motivo]};
+          background:${COLOR[p.motivo]}1a;
+          border-radius:20px;padding:3px 10px;white-space:nowrap;
+        ">${ICON[p.motivo]} ${p.detalhe}</div>
+      </div>`).join('');
+  }
+
+  overlay.style.display = 'flex';
 }
 
 /** Renderiza a barra de ocupação do turno atual. */
@@ -4517,5 +4635,200 @@ document.querySelectorAll('.tab[data-tab]').forEach(btn => {
     if (tab === 'avisos')   setTimeout(() => { if(window.renderAvisosHist) window.renderAvisosHist(); }, 100);
     if (tab === 'pendencias') setTimeout(() => { if(window.renderPendencias) window.renderPendencias(); }, 100);
     if (tab === 'aniversarios') setTimeout(() => { if(typeof renderAniversarios === 'function') renderAniversarios(); }, 100);
+    if (tab === 'relatorios') setTimeout(() => iniciarRelatorios(), 80);
   });
 });
+
+/* ==========================================================================
+   21. Relatórios — acompanhamento de ausências por período
+   ========================================================================== */
+
+/**
+ * Inicializa os controles da aba de relatórios na primeira abertura.
+ * Preenche o select de colaboradores e define o período padrão (mês atual).
+ */
+let _relatoriosIniciado = false;
+function iniciarRelatorios() {
+  if (!_relatoriosIniciado) {
+    _relatoriosIniciado = true;
+
+    // Período padrão: mês atual
+    const hoje = new Date();
+    const priDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const ultDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    document.getElementById('rel-de').value  = priDia;
+    document.getElementById('rel-ate').value = ultDia;
+
+    // Preenche select de colaboradores
+    const sel = document.getElementById('rel-colab');
+    sel.innerHTML = '<option value="">Todos</option>';
+    [...colaboradores]
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.nome;
+        opt.textContent = c.nome;
+        sel.appendChild(opt);
+      });
+
+    document.getElementById('btn-rel-gerar').onclick    = gerarRelatorio;
+    document.getElementById('btn-rel-exportar').onclick = exportarRelatorioCSV;
+  }
+  gerarRelatorio();
+}
+
+/**
+ * Computa e renderiza o relatório de ausências para o período/colaborador selecionados.
+ */
+function gerarRelatorio() {
+  const de   = document.getElementById('rel-de').value;
+  const ate  = document.getElementById('rel-ate').value;
+  const filtroColab = document.getElementById('rel-colab').value;
+
+  if (!de || !ate) { toast('Selecione o período.'); return; }
+  if (de > ate)    { toast('Data inicial maior que a final.'); return; }
+
+  const deDate  = new Date(de  + 'T00:00:00');
+  const ateDate = new Date(ate + 'T23:59:59');
+
+  /** Conta quantos dias de um intervalo [inicio, fim] (ISO strings) caem dentro de [de, ate] */
+  function diasNoIntervalo(inicio, fim) {
+    if (!inicio) return 0;
+    const s = new Date(Math.max(new Date(inicio + 'T00:00:00'), deDate));
+    const e = new Date(Math.min(fim ? new Date(fim + 'T23:59:59') : ateDate, ateDate));
+    if (s > e) return 0;
+    return Math.round((e - s) / 86400000) + 1;
+  }
+
+  const lista = colaboradores
+    .filter(c => !filtroColab || c.nome === filtroColab)
+    .map(c => {
+      // Folgas no período (cada registro = 1 dia)
+      const qtdFolgas = folgas.filter(f => {
+        if (f.nome !== c.nome) return false;
+        if (f.tipo === 'ferias') return false;
+        const d = f.data_folga || f.data;
+        return d >= de && d <= ate;
+      }).length;
+
+      // Férias: dias que caem no período
+      const diasFerias = folgas
+        .filter(f => f.nome === c.nome && f.tipo === 'ferias')
+        .reduce((acc, f) => acc + diasNoIntervalo(f.data_folga || f.data, f.data_fim), 0);
+
+      // Atestado: se tiver registro, conta dias no período
+      const at = atestados[c.nome];
+      let diasAtestado = 0;
+      if (at?.dias && at?.dataInicio) {
+        const fimAt = new Date(at.dataInicio + 'T12:00:00');
+        fimAt.setDate(fimAt.getDate() + at.dias - 1);
+        diasAtestado = diasNoIntervalo(at.dataInicio, fimAt.toISOString().split('T')[0]);
+      }
+
+      const total = qtdFolgas + diasFerias + diasAtestado;
+
+      // Status atual
+      const f = getFlagDefault(c.nome);
+      let statusHoje = '—';
+      let statusCor  = 'var(--text-muted,#888)';
+      if (f.ferias)   { statusHoje = '🌴 Férias';   statusCor = '#34d399'; }
+      if (f.atestado) { statusHoje = '🩺 Atestado'; statusCor = '#f59e0b'; }
+      if (f.off)      { statusHoje = '🔴 Day off';  statusCor = '#f87171'; }
+      if (!f.ferias && !f.atestado && !f.off) { statusHoje = '✅ Presente'; statusCor = '#4ade80'; }
+
+      return { nome: c.nome, cargo: c.cargo, qtdFolgas, diasFerias, diasAtestado, total, statusHoje, statusCor };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  // ── Resumo cards ──
+  const totFolgas   = lista.reduce((s, r) => s + r.qtdFolgas, 0);
+  const totFerias   = lista.reduce((s, r) => s + r.diasFerias, 0);
+  const totAtestado = lista.reduce((s, r) => s + r.diasAtestado, 0);
+  const ausHoje     = colaboradores.filter(c => {
+    const f = getFlagDefault(c.nome);
+    return f.off || f.ferias || f.atestado;
+  }).length;
+
+  const resumoEl = document.getElementById('rel-resumo');
+  resumoEl.innerHTML = [
+    { icon: '📅', label: 'Folgas no período',    valor: totFolgas,   cor: '#60a5fa' },
+    { icon: '🌴', label: 'Dias de férias',        valor: totFerias,   cor: '#34d399' },
+    { icon: '🩺', label: 'Dias de atestado',      valor: totAtestado, cor: '#f59e0b' },
+    { icon: '⛔', label: 'Ausentes hoje',         valor: ausHoje,     cor: '#f87171' },
+    { icon: '👥', label: 'Colaboradores filtrados', valor: lista.length, cor: '#a78bfa' },
+  ].map(c => `
+    <div class="card" style="padding:14px 16px;text-align:center;border-top:3px solid ${c.cor}40;">
+      <div style="font-size:22px;margin-bottom:4px;">${c.icon}</div>
+      <div style="font-size:22px;font-weight:800;color:${c.cor};">${c.valor}</div>
+      <div style="font-size:11px;opacity:.6;margin-top:2px;">${c.label}</div>
+    </div>`).join('');
+
+  // ── Tabela ──
+  const badge = document.getElementById('rel-total-badge');
+  badge.textContent = `${lista.length} colaborador${lista.length !== 1 ? 'es' : ''}`;
+
+  const tbody = document.getElementById('rel-tbody');
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;opacity:.5;">Nenhum resultado para o período.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = lista.map((r, i) => `
+    <tr style="border-bottom:1px solid var(--border,#2a2a3a);${i % 2 === 1 ? 'background:rgba(255,255,255,.02);' : ''}">
+      <td style="padding:11px 16px;">
+        <div style="font-weight:600;font-size:13px;">${r.nome}</div>
+        <div style="font-size:11px;opacity:.5;">${r.cargo || ''}</div>
+      </td>
+      <td style="padding:11px 12px;text-align:center;">
+        ${r.qtdFolgas > 0 ? `<span style="font-weight:600;color:#60a5fa;">${r.qtdFolgas}</span>` : `<span style="opacity:.3;">—</span>`}
+      </td>
+      <td style="padding:11px 12px;text-align:center;">
+        ${r.diasFerias > 0 ? `<span style="font-weight:600;color:#34d399;">${r.diasFerias}</span>` : `<span style="opacity:.3;">—</span>`}
+      </td>
+      <td style="padding:11px 12px;text-align:center;">
+        ${r.diasAtestado > 0 ? `<span style="font-weight:600;color:#f59e0b;">${r.diasAtestado}</span>` : `<span style="opacity:.3;">—</span>`}
+      </td>
+      <td style="padding:11px 12px;text-align:center;">
+        ${r.total > 0
+          ? `<span style="font-weight:700;background:rgba(255,255,255,.06);border-radius:20px;padding:2px 10px;">${r.total}</span>`
+          : `<span style="opacity:.3;">0</span>`}
+      </td>
+      <td style="padding:11px 12px;text-align:center;">
+        <span style="font-size:12px;font-weight:600;color:${r.statusCor};">${r.statusHoje}</span>
+      </td>
+    </tr>`).join('');
+
+  // Guarda para exportação
+  window._relatorioCache = { de, ate, lista };
+}
+
+/**
+ * Exporta o relatório atual como CSV.
+ */
+function exportarRelatorioCSV() {
+  const cache = window._relatorioCache;
+  if (!cache?.lista?.length) { toast('Gere um relatório antes de exportar.'); return; }
+
+  const linhas = [
+    ['Colaborador', 'Cargo', 'Folgas', 'Dias Férias', 'Dias Atestado', 'Total Ausências', 'Status Hoje'],
+    ...cache.lista.map(r => [
+      r.nome,
+      r.cargo || '',
+      r.qtdFolgas,
+      r.diasFerias,
+      r.diasAtestado,
+      r.total,
+      r.statusHoje.replace(/[^\w\s]/g, '').trim(),
+    ]),
+  ];
+
+  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `relatorio-ausencias_${cache.de}_${cache.ate}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV exportado com sucesso!');
+}
