@@ -3266,6 +3266,7 @@ function iniciarRealtime() {
     try {
       await loadSupabase();
       saveLocal();
+      refreshDcPreloadedData();
       renderAll();
     } catch (err) {
       console.warn("[Realtime] Falha ao re-sincronizar após evento remoto:", err);
@@ -3305,6 +3306,16 @@ function iniciarRealtime() {
   return channel;
 }
 
+
+/** Mantém o cache de dados pré-carregados para o dashboard atualizado. */
+function refreshDcPreloadedData() {
+  window._dcPreloadedData = {
+    folgas:      folgas,
+    pendencias:  pendencias,
+    importacoes: (typeof PEV_importacoes !== 'undefined' ? PEV_importacoes : []),
+  };
+}
+
 async function boot() {
   try {
     loadLocal();
@@ -3317,6 +3328,14 @@ async function boot() {
 
     saveLocal();
     verificarAtestadosVencidos();
+
+    // Expõe dados já carregados para o dashboard evitar 3 queries extras
+    window._dcPreloadedData = {
+      folgas:      folgas,
+      pendencias:  pendencias,
+      importacoes: (typeof PEV_importacoes !== 'undefined' ? PEV_importacoes : []),
+    };
+
     renderAll();
 
     setTimeout(() => {
@@ -3410,7 +3429,7 @@ if (supa) {
   // silenciosas de WebSocket (ex.: aba em background por muito tempo).
   setInterval(() => {
     if (!document.hidden) {
-      loadSupabase().then(() => { saveLocal(); renderAll(); }).catch((err) => {
+      loadSupabase().then(() => { saveLocal(); refreshDcPreloadedData(); renderAll(); }).catch((err) => {
         console.warn("[heartbeat]", err);
       });
     }

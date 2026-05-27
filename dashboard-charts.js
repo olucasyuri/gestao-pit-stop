@@ -204,6 +204,24 @@ var ICONS = {
   trend:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
 };
 
+
+/* ─── Skeleton de carregamento ──────────────────────────── */
+function _dcSkeletonHTML() {
+  var pulse = 'animation:dc-pulse 1.4s ease-in-out infinite;';
+  var bar = function(w, h, r) {
+    r = r || 8;
+    return '<div style="background:rgba(255,255,255,.07);border-radius:' + r + 'px;width:' + w + ';height:' + h + 'px;' + pulse + '"></div>';
+  };
+  var kpi = '<div style="background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:8px;">' +
+    bar('40%', 9) + bar('55%', 22) + bar('70%', 8) + '</div>';
+  var kpiRow = '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px;">' + kpi.repeat(6) + '</div>';
+  var card = '<div style="background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;">' +
+    bar('50%', 10) + bar('100%', 60) + bar('80%', 8) + '</div>';
+  var row3 = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;">' + card.repeat(3) + '</div>';
+  return '<style>@keyframes dc-pulse{0%,100%{opacity:.4}50%{opacity:.9}}</style>' +
+    '<div class="dc2-skeleton">' + kpiRow + row3 + row3 + '</div>';
+}
+
 /* ─── Render principal ──────────────────────────────── */
 async function renderDashboardCharts() {
   // Evita renderização simultânea
@@ -221,18 +239,33 @@ async function renderDashboardCharts() {
     return;
   }
 
-  // Carrega folgas do Supabase primeiro
-  var folgasSupabase     = await carregarFolgasSupabase();
-  var pendenciasSupabase = await carregarPendenciasSupabase();
-  var importacoesSupabase = await carregarImportacoesSupabase();
+  // Mostra skeleton imediatamente enquanto dados carregam
+  if (!container.querySelector('.dc2-skeleton')) {
+    container.innerHTML = _dcSkeletonHTML();
+  }
+
+  // Se o boot() já carregou os dados, reutiliza — evita 3 round-trips extras
+  var _pre = window._dcPreloadedData || {};
+  var folgas, pendencias, importacoes;
+
+  if (_pre.folgas && _pre.pendencias && _pre.importacoes) {
+    folgas      = _pre.folgas;
+    pendencias  = _pre.pendencias;
+    importacoes = _pre.importacoes;
+  } else {
+    var folgasSupabase      = await carregarFolgasSupabase();
+    var pendenciasSupabase  = await carregarPendenciasSupabase();
+    var importacoesSupabase = await carregarImportacoesSupabase();
+    var _d = lerDados();
+    folgas      = folgasSupabase.length > 0 ? folgasSupabase : _d.folgas;
+    pendencias  = pendenciasSupabase.length > 0 ? pendenciasSupabase : _d.pendencias;
+    importacoes = importacoesSupabase.length > 0 ? importacoesSupabase : _d.importacoes;
+  }
 
   var dados = lerDados();
   var colaboradores = dados.colaboradores;
-  var folgas        = folgasSupabase.length > 0 ? folgasSupabase : dados.folgas; // Prioriza Supabase
   var pausas        = dados.pausas;
-  var pendencias    = pendenciasSupabase.length > 0 ? pendenciasSupabase : dados.pendencias; // Prioriza Supabase
   var flags         = dados.flags;
-  var importacoes   = importacoesSupabase.length > 0 ? importacoesSupabase : dados.importacoes; // Prioriza Supabase
   var dias          = ultimosDias(7);
   var today         = new Date().toISOString().slice(0, 10);
 
@@ -761,6 +794,11 @@ function injectDcCSS() {
 }
 @media(max-width:1200px) { .dc2-row-3 { grid-template-columns: 1fr 1fr; } }
 @media(max-width:680px)  { .dc2-row-3 { grid-template-columns: 1fr; } }
+@media(max-width:680px)  {
+  .dc2-kpi-sub { white-space: normal; }
+  .dc2-aus-cols { flex-direction: column; }
+  .dc2-act-grid { gap: 4px; }
+}
 
 /* Card base */
 .dc2-card {
