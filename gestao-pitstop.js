@@ -4801,9 +4801,8 @@ function gerarRelatorio() {
   // Guarda para exportação
   window._relatorioCache = { de, ate, lista };
 }
-
 /**
- * Exporta o relatório atual como CSV.
+ * Exporta o relatório atual como XLSX (Excel).
  */
 function exportarRelatorioCSV() {
   const cache = window._relatorioCache;
@@ -4822,13 +4821,18 @@ function exportarRelatorioCSV() {
     ]),
   ];
 
-  const csv = linhas.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `relatorio-ausencias_${cache.de}_${cache.ate}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('CSV exportado com sucesso!');
+  // Cria planilha com SheetJS
+  const ws = XLSX.utils.aoa_to_sheet(linhas);
+
+  // Largura automática das colunas
+  const colWidths = linhas[0].map((_, ci) => ({
+    wch: Math.max(...linhas.map(row => String(row[ci] ?? '').length)) + 2,
+  }));
+  ws['!cols'] = colWidths;
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+
+  XLSX.writeFile(wb, `relatorio-ausencias_${cache.de}_${cache.ate}.xlsx`);
+  toast('Excel exportado com sucesso!');
 }
