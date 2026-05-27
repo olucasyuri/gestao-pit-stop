@@ -224,10 +224,28 @@ async function renderDashboardCharts() {
   // Debug: log de férias encontradas
   console.log('📊 Dashboard - Folgas totais:', folgas.length);
   console.log('📊 Dashboard - Férias ativas:', feriasAtivas.length, feriasAtivas);
-  
+
+  /* Inclui colaboradores com flag ferias=true que não têm registro na tabela folgas */
+  var nomesNaTabela = feriasAtivas.map(function(f) {
+    return (f.colaborador_nome || f.nome || '').toLowerCase();
+  });
+  colaboradores.forEach(function(c) {
+    var f = (flags || {})[c.nome] || {};
+    if (f.ferias && nomesNaTabela.indexOf(c.nome.toLowerCase()) === -1) {
+      feriasAtivas.push({
+        colaborador_nome: c.nome,
+        nome: c.nome,
+        data_folga: today,
+        data_fim: today,
+        status: 'ferias',
+        tipo: 'ferias',
+        _flag_only: true,
+      });
+    }
+  });
+
   var folgasHoje    = folgas.filter(function(f) { return f.data_folga === today && !dcIsFerias(f); });
-  var feriasHoje    = folgas.filter(function(f) {
-    if (!dcIsFerias(f)) return false;
+  var feriasHoje    = feriasAtivas.filter(function(f) {
     return today >= f.data_folga && today <= dcFeriasFim(f);
   });
   var proxFolgas    = folgasAtivas.slice(0, 4);
