@@ -217,12 +217,15 @@ async function renderDashboardCharts() {
   var proxFolgas    = folgasAtivas.slice(0, 4);
   var proxFerias    = feriasAtivas.slice(0, 4);
 
-  /* Pendências */
-  var pendAbertas  = pendencias.filter(function(p) { return p.caso_aberto; }).length;
-  var pendCasoAb   = pendencias.filter(function(p) { return p.caso_aberto; }).length;
-  var pendFechadas = pendencias.length - pendAbertas;
-  var pendPercent  = pendencias.length > 0 ? Math.round(pendAbertas / pendencias.length * 100) : 0;
-  var pendRecentes = pendencias.slice(-4).reverse();
+  /* Pendências — inclui concluídas do localStorage separado */
+  var pendConcluidas = (function() { try { return JSON.parse(localStorage.getItem('pitstop_pend_concl') || '[]'); } catch(e) { return []; } })();
+  var pendEmAnalise  = pendencias.filter(function(p) { return !p.caso_aberto && !p._concluida; });
+  var pendCasoAb     = pendencias.filter(function(p) { return p.caso_aberto  && !p._concluida; });
+  var pendAbertas    = pendEmAnalise.length + pendCasoAb.length;
+  var pendFechadas   = pendConcluidas.length;
+  var pendTotal      = pendAbertas + pendFechadas;
+  var pendPercent    = pendTotal > 0 ? Math.round(pendAbertas / pendTotal * 100) : 0;
+  var pendRecentes   = pendencias.slice(-4).reverse();
 
   /* Importações */
   var impSim      = importacoes.filter(function(i) { return i.importacao === 'sim'; }).length;
@@ -248,14 +251,14 @@ async function renderDashboardCharts() {
 
   /* === ROW 1: KPI compactos (6 colunas) === */
   /* Salva snapshot dos dados para uso nos modais */
-  dcSalvarSnapshot({ colaboradores: colaboradores, folgas: folgas, flags: flags, pendencias: pendencias, importacoes: importacoes });
+  dcSalvarSnapshot({ colaboradores: colaboradores, folgas: folgas, flags: flags, pendencias: pendencias, pendConcluidas: pendConcluidas, pendEmAnalise: pendEmAnalise, pendCasoAb: pendCasoAb, importacoes: importacoes });
 
   var kpiRow = '<div class="dc2-kpi-row">' +
     dcKpi('Presentes', presentesHoje, presColor, buildSparkline(presenteSerie, presColor), presPercent + '% da equipe', ICONS.users, 'presentes') +
     dcKpi('Ausentes hoje', ausentesHoje, DC.red, buildSparkline(folgasSerie.map(function(v,i){return v+feriasSerie[i];}), DC.red), ausentesHoje === 0 ? 'Equipe completa 🎉' : ausentesHoje + ' fora hoje', ICONS.beach, 'ausentes') +
     dcKpi('Folgas futuras', folgasAtivas.length, DC.gold, buildSparkline(folgasSerie, DC.gold), folgasHoje.length + ' hoje · ' + folgasAtivas.length + ' agendadas', ICONS.calendar, 'folgas') +
     dcKpi('Férias ativas', feriasAtivas.length, DC.blue, buildSparkline(feriasSerie, DC.blue), feriasHoje.length + ' hoje · ' + feriasAtivas.length + ' agendadas', ICONS.beach, 'ferias') +
-    dcKpi('Pendências', pendencias.length, DC.orange, buildSparkline(pendSerie, DC.orange), pendAbertas + ' em aberto · ' + pendFechadas + ' resolvidas', ICONS.list, 'pendencias') +
+    dcKpi('Pendências', pendTotal, DC.orange, buildSparkline(pendSerie, DC.orange), pendAbertas + ' em aberto · ' + pendFechadas + ' concluídas', ICONS.list, 'pendencias') +
     dcKpi('Importações PEV', importacoes.length, DC.purple, buildSparkline(importSerie, DC.purple), impSim + ' com importação · ' + impNao + ' sem', ICONS.import, 'importacoes') +
   '</div>';
 
@@ -337,18 +340,23 @@ async function renderDashboardCharts() {
 
   /* === ROW 3: Pendências | Importações PEV | Atividade === */
 
-  /* Card Pendências */
-  var pendStatusBar = pendencias.length > 0
-    ? '<div class="dc2-status-bar-track" title="' + pendAbertas + ' aberto, ' + pendFechadas + ' fechadas">' +
+  /* Card Pendências — usa todas as categorias do Kanban */
+  var pendTodasAtivas = pendEmAnalise.concat(pendCasoAb); // Em Análise + Caso Aberto
+  var pendStatusBar = pendTotal > 0
+    ? '<div class="dc2-status-bar-track" title="' + pendAbertas + ' em aberto, ' + pendFechadas + ' concluídas">' +
         '<div class="dc2-status-bar-fill" style="width:' + (100-pendPercent) + '%;background:' + DC.green + '"></div>' +
         '<div class="dc2-status-bar-fill" style="width:' + pendPercent + '%;background:' + DC.orange + '"></div>' +
       '</div>'
     : '';
-  var pendListHtml = pendRecentes.length > 0
-    ? pendRecentes.map(function(p) {
+  // Lista recente: combina ativas (mais novas primeiro) + até 2 concluídas
+  var pendListItens = pendTodasAtivas.slice(0,3).concat(pendConcluidas.slice(0,2));
+  var pendListHtml = pendListItens.length > 0
+    ? pendListItens.map(function(p) {
         var motivo = (p.motivo || '').slice(0, 35) + ((p.motivo||'').length > 35 ? '…' : '');
-        var cor = p.caso_aberto ? DC.orange : DC.green;
-        var label = p.caso_aberto ? 'Aberto' : 'Fechado';
+        var isConcluida = !!p._concluida;
+        var isCasoAberto = p.caso_aberto && !isConcluida;
+        var cor = isConcluida ? DC.teal : isCasoAberto ? DC.orange : DC.gold;
+        var label = isConcluida ? '✅ Concluída' : isCasoAberto ? '🔴 Caso aberto' : '🔍 Análise';
         return '<div class="dc2-pend-item"><div class="dc2-pend-dot" style="background:' + cor + ';box-shadow:0 0 5px ' + cor + '30"></div>' +
           '<div class="dc2-aus-info" style="flex:1"><strong>' + dcEsc(p.cliente||'—') + '</strong><span>' + dcEsc(motivo||'—') + '</span></div>' +
           '<span class="dc2-pill" style="font-size:10px;padding:2px 7px;background:' + cor + '15;color:' + cor + ';border-color:' + cor + '30">' + label + '</span></div>';
@@ -357,8 +365,8 @@ async function renderDashboardCharts() {
   var cardPendencias = '<div class="dc2-card">' +
     '<div class="dc2-card-header">' + ICONS.list + '<span>Pendências</span>' +
     '<div class="dc2-header-pills"><span class="dc2-pill" style="background:rgba(251,146,60,.12);color:' + DC.orange + ';border-color:rgba(251,146,60,.2)">' + pendAbertas + ' abertas</span>' +
-    '<span class="dc2-pill" style="background:rgba(74,222,128,.1);color:' + DC.green + ';border-color:rgba(74,222,128,.18)">' + pendFechadas + ' fechadas</span></div></div>' +
-    (pendStatusBar ? '<div style="margin-bottom:12px">' + pendStatusBar + '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:10.5px;color:rgba(255,255,255,.35)"><span>Resolvidas ' + (100-pendPercent) + '%</span><span>Em aberto ' + pendPercent + '%</span></div></div>' : '') +
+    '<span class="dc2-pill" style="background:rgba(74,222,128,.1);color:' + DC.teal + ';border-color:rgba(74,222,128,.18)">' + pendFechadas + ' fechadas</span></div></div>' +
+    (pendStatusBar ? '<div style="margin-bottom:12px">' + pendStatusBar + '<div style="display:flex;justify-content:space-between;margin-top:5px;font-size:10.5px;color:rgba(255,255,255,.35)"><span>Concluídas ' + (100-pendPercent) + '%</span><span>Em aberto ' + pendPercent + '%</span></div></div>' : '') +
     '<div class="dc2-pend-list">' + pendListHtml + '</div>' +
     '<button class="dc2-link-btn" onclick="document.querySelector(\'[data-tab=pendencias]\').click()" type="button">Ver todas as pendências →</button>' +
   '</div>';
@@ -553,24 +561,28 @@ function dcAbrirModal(cardId) {
   }
   else if (cardId === 'pendencias') {
     cor = DC.orange; titulo = '📋 Pendências';
-    var abertas  = d.pendencias.filter(function(p){ return p.caso_aberto; });
-    var fechadas = d.pendencias.filter(function(p){ return !p.caso_aberto; });
-    subtitulo = abertas.length + ' em aberto · ' + fechadas.length + ' resolvidas';
-    var rPend = function(lst) {
+    var emAnalise   = d.pendEmAnalise  || d.pendencias.filter(function(p){ return !p.caso_aberto && !p._concluida; });
+    var comCaso     = d.pendCasoAb     || d.pendencias.filter(function(p){ return p.caso_aberto  && !p._concluida; });
+    var concluidas  = d.pendConcluidas || [];
+    var totalAb = emAnalise.length + comCaso.length;
+    subtitulo = totalAb + ' em aberto · ' + concluidas.length + ' concluídas';
+    var rPend = function(lst, cor2, badge) {
       if (!lst.length) return '<div class="dcm-empty">Nenhum registro</div>';
       return lst.map(function(p) {
-        var nome = p.nome||p.colaborador||p.descricao||'Pendência';
+        var nome = p.cliente||p.nome||p.colaborador||'Pendência';
         var dt = p.criado_em ? new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
-        var bc = p.caso_aberto?DC.orange:DC.teal;
+        var dtConc = p._concluidaEm ? ' · Concluída ' + new Date(p._concluidaEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
         return '<div class="dcm-row">' +
           '<div class="dcm-av" style="background:rgba(251,146,60,.12);color:' + DC.orange + '">' + dcEsc(nome.charAt(0).toUpperCase()) + '</div>' +
-          '<div class="dcm-info"><strong>' + dcEsc(nome) + '</strong><span>' + dt + (p.observacao?' · '+dcEsc(p.observacao):'') + '</span></div>' +
-          '<div class="dcm-badge" style="color:' + bc + '">' + (p.caso_aberto?'🔴 Aberta':'✅ Resolvida') + '</div>' +
+          '<div class="dcm-info"><strong>' + dcEsc(nome) + '</strong><span>' + (p.cnpj?'CNPJ '+dcEsc(p.cnpj)+' ':'')+dt+dtConc + '</span></div>' +
+          '<div class="dcm-badge" style="color:' + cor2 + '">' + badge + '</div>' +
         '</div>';
       }).join('');
     };
-    conteudo = '<div style="margin-bottom:12px"><div class="dcm-section-title" style="color:' + DC.orange + '">🔴 Em aberto (' + abertas.length + ')</div>' + rPend(abertas) + '</div>' +
-               '<div><div class="dcm-section-title" style="color:' + DC.teal + '">✅ Resolvidas (' + fechadas.length + ')</div>' + rPend(fechadas) + '</div>';
+    conteudo =
+      '<div style="margin-bottom:12px"><div class="dcm-section-title" style="color:#f5c842">🔍 Em Análise (' + emAnalise.length + ')</div>' + rPend(emAnalise, DC.gold, '🔍 Análise') + '</div>' +
+      '<div style="margin-bottom:12px"><div class="dcm-section-title" style="color:' + DC.orange + '">🔴 Caso Aberto (' + comCaso.length + ')</div>' + rPend(comCaso, DC.orange, '🔴 Caso aberto') + '</div>' +
+      '<div><div class="dcm-section-title" style="color:' + DC.teal + '">✅ Concluídas (' + concluidas.length + ')</div>' + rPend(concluidas, DC.teal, '✅ Concluída') + '</div>';
   }
   else if (cardId === 'importacoes') {
     cor = DC.purple; titulo = '📥 Importações PEV';
