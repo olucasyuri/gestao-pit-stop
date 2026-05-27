@@ -368,13 +368,14 @@ async function loadSupabase() {
   if (!supa) return false;
 
   // Executa todas as queries em paralelo
-  const [resColabs, resPausas, resFolgas, resFlags, resAtestados, resSabado] = await Promise.all([
+  const [resColabs, resPausas, resFolgas, resFlags, resAtestados, resSabado, resPendencias] = await Promise.all([
     supa.from("colaboradores").select("*").order("nome"),
     supa.from("pausas").select("*"),
     supa.from("folgas").select("*").order("data_folga", { ascending: true }),
     supa.from("pitstop_flags").select("*"),
     supa.from("pitstop_atestados").select("*"),
     supa.from("pitstop_escala_sabado").select("*").order("nome"),
+    supa.from("pitstop_pendencias").select("*").order("criado_em", { ascending: false }),
   ]);
 
   // Colaboradores — erro crítico, propaga para o boot()
@@ -450,6 +451,14 @@ async function loadSupabase() {
       pausa_10_2: row.pausa_10_2 ?? "",
       saida:      row.saida      ?? "",
     }));
+  }
+
+  // Pendências — erro não-crítico, fallback para localStorage
+  if (resPendencias.error) {
+    console.warn("[Supabase] Tabela pitstop_pendencias não encontrada — usando localStorage. Execute o SQL de criação.", resPendencias.error);
+    pendencias = JSON.parse(localStorage.getItem("pitstop_pendencias")) ?? [];
+  } else {
+    pendencias = resPendencias.data ?? [];
   }
 
   // Status de pausas do dia — erro não-crítico
@@ -2630,7 +2639,7 @@ async function saveFolga() {
 }
 
 /** Salva uma nova pendência de análise. */
-function savePendencia() {
+async function savePendencia() {
   const casoAberto = $("pendencia-caso-aberto").checked;
   const pendencia = {
     id: window.crypto?.randomUUID ? window.crypto.randomUUID() : String(Date.now()),
@@ -2661,7 +2670,32 @@ function savePendencia() {
   $("pendencia-caso-aberto").checked = false;
   togglePendenciaCaso();
   renderPendencias();
-  toast("Pendência adicionada.");
+
+  if (supa) {
+    try {
+      const { error } = await supa.from("pitstop_pendencias").insert({
+        id:          pendencia.id,
+        cliente:     pendencia.cliente,
+        cnpj:        pendencia.cnpj,
+        registro:    pendencia.registro,
+        motivo:      pendencia.motivo,
+        caso_aberto: pendencia.caso_aberto,
+        numero_caso: pendencia.numero_caso || null,
+        criado_em:   pendencia.criado_em,
+      });
+      if (error) {
+        console.warn("[savePendencia]", error);
+        toast("Pendência adicionada localmente (falha ao sincronizar).");
+        return;
+      }
+    } catch (err) {
+      console.warn("[savePendencia] exception:", err);
+      toast("Pendência adicionada localmente (falha ao sincronizar).");
+      return;
+    }
+  }
+
+  toast("Pendência adicionada." + (supa ? "" : " (modo local)"));
 }
 
 /** Mostra ou oculta o campo de número do caso. */
@@ -2674,10 +2708,28 @@ function togglePendenciaCaso() {
 }
 
 /** Remove uma pendência concluída. */
-window.removePendencia = (id) => {
+window.removePendencia = async (id) => {
+  // Salva no histórico local antes de remover
+  const concluida = pendencias.find((p) => p.id === id);
+  if (concluida) {
+    const hist = JSON.parse(localStorage.getItem("pitstop_pend_concl") || "[]");
+    hist.unshift(concluida);
+    localStorage.setItem("pitstop_pend_concl", JSON.stringify(hist.slice(0, 20)));
+  }
+
   pendencias = pendencias.filter((p) => p.id !== id);
   saveLocal();
   renderPendencias();
+
+  if (supa) {
+    try {
+      const { error } = await supa.from("pitstop_pendencias").delete().eq("id", id);
+      if (error) console.warn("[removePendencia]", error);
+    } catch (err) {
+      console.warn("[removePendencia] exception:", err);
+    }
+  }
+
   toast("Pendência concluída.");
 };
 
@@ -2993,6 +3045,11 @@ async function sendAviso() {
       console.warn("[Hermes] aviso salvo no portal, mas Discord falhou:", err);
     }
 
+    // Sinaliza o sino imediatamente para o gestor que acabou de enviar
+    if (window.NotifBell) {
+      window.NotifBell.add('aviso', '📢 ' + titulo, mensagem, '📢');
+    }
+
     const btn = document.getElementById('btn-send-aviso');
     confirmarEnvioBtn(btn, `${destinatarios.length} enviado(s)`);
     toast(`Aviso publicado para ${destinatarios.length} colaborador(es).`);
@@ -3049,6 +3106,87 @@ function resetarBtn(btn, texto) {
    ========================================================================== */
 
 /** Inicializa a aplicação: carrega dados e renderiza a interface. */
+/* ==========================================================================
+   13b. Realtime — sincronização via WebSocket (Supabase)
+   ========================================================================== */
+
+/**
+ * Inicia a subscription Realtime do Supabase.
+ * Qualquer mutação nas tabelas monitoradas dispara um re-load completo,
+ * garantindo que todos os gestores vejam o mesmo estado sem polling.
+ *
+ * Tabelas monitoradas:
+ *   colaboradores, pausas, folgas, pitstop_flags, pitstop_atestados,
+ *   pitstop_escala_sabado, pitstop_pendencias
+ *
+ * Pré-requisito (SQL, uma vez no Dashboard):
+ *   alter publication supabase_realtime add table colaboradores;
+ *   alter publication supabase_realtime add table pausas;
+ *   alter publication supabase_realtime add table folgas;
+ *   alter publication supabase_realtime add table pitstop_flags;
+ *   alter publication supabase_realtime add table pitstop_atestados;
+ *   alter publication supabase_realtime add table pitstop_escala_sabado;
+ *   alter publication supabase_realtime add table pitstop_pendencias;
+ *
+ * @returns {import("@supabase/supabase-js").RealtimeChannel}
+ */
+function iniciarRealtime() {
+  if (!supa) return null;
+
+  const TABELAS = [
+    "colaboradores",
+    "pausas",
+    "folgas",
+    "pitstop_flags",
+    "pitstop_atestados",
+    "pitstop_escala_sabado",
+    "pitstop_pendencias",
+  ];
+
+  /** Re-sincroniza o estado global quando chega qualquer evento remoto. */
+  async function _onRemoteChange(payload) {
+    try {
+      await loadSupabase();
+      saveLocal();
+      renderAll();
+    } catch (err) {
+      console.warn("[Realtime] Falha ao re-sincronizar após evento remoto:", err);
+    }
+  }
+
+  let channel = supa.channel("pitstop-sync");
+
+  TABELAS.forEach((tabela) => {
+    channel = channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: tabela },
+      _onRemoteChange
+    );
+  });
+
+  channel.subscribe((status, err) => {
+    if (status === "SUBSCRIBED") {
+      console.log("[Realtime] Conectado — sincronização em tempo real ativa.");
+    } else if (status === "CHANNEL_ERROR") {
+      console.warn("[Realtime] Erro no canal:", err);
+    } else if (status === "TIMED_OUT") {
+      console.warn("[Realtime] Timeout — tentando reconectar...");
+    }
+  });
+
+  // Reconecta automaticamente quando o usuário volta para a aba
+  // (WebSockets ficam ociosos em abas em background em alguns browsers)
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      loadSupabase()
+        .then(() => { saveLocal(); renderAll(); })
+        .catch((err) => console.warn("[Realtime] Re-sync ao retornar para aba:", err));
+    }
+  });
+
+  return channel;
+}
+
 async function boot() {
   try {
     loadLocal();
@@ -3145,18 +3283,20 @@ setInterval(() => {
   renderDash();
 }, 60000);
 
-// Auto-sincronização: recarrega dados do Supabase a cada 30s para refletir
-// mudanças feitas por outros usuários sem precisar apertar Sincronizar.
+// Auto-sincronização via Supabase Realtime (WebSocket).
+// Substitui o polling de 30s: qualquer INSERT/UPDATE/DELETE nas tabelas
+// abaixo dispara um re-load imediato em todos os gestores conectados.
 if (supa) {
-  setInterval(async () => {
-    try {
-      await loadSupabase();
-      saveLocal();
-      renderAll();
-    } catch (err) {
-      console.warn("[auto-sync]", err);
+  iniciarRealtime();
+  // Heartbeat leve: re-sincroniza a cada 5min como fallback para quedas
+  // silenciosas de WebSocket (ex.: aba em background por muito tempo).
+  setInterval(() => {
+    if (!document.hidden) {
+      loadSupabase().then(() => { saveLocal(); renderAll(); }).catch((err) => {
+        console.warn("[heartbeat]", err);
+      });
     }
-  }, 30000);
+  }, 300_000);
 }
 
 /* ==========================================================================

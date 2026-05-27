@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="gestao-pitstop.css" />
     <link rel="stylesheet" href="gestao-pev.css" />
     <link rel="stylesheet" href="escala-fds.css" />
+    <link rel="stylesheet" href="gestao-treinamentos.css" />
   </head>
   <body>
 
@@ -96,6 +97,11 @@
           Aniversários
         </button>
 
+        <div class="sidebar-section-label sidebar-section-label--inner">CAPACITAÇÃO</div>
+        <button class="tab" data-tab="treinamentos" role="tab" aria-selected="false">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Treinamentos
+        </button>
         <div class="sidebar-section-label sidebar-section-label--inner">ESCALAS</div>
 
         <button class="tab" data-tab="fds" role="tab" aria-selected="false">
@@ -534,6 +540,61 @@
         <!-- Grid principal -->
         <div class="bday-main-card">
           <div id="aniversarios-list" class="birthday-grid"></div>
+        </div>
+
+      </section>
+
+
+      <!-- ═══════════════════════════════════════════════ -->
+      <!-- TREINAMENTOS — Pit Stop & PEV                   -->
+      <!-- ═══════════════════════════════════════════════ -->
+      <section class="page" id="page-treinamentos" role="tabpanel">
+
+        <!-- Header -->
+        <div class="trein-header">
+          <div class="trein-header-left">
+            <p class="eyebrow">Capacitação</p>
+            <h1>Treinamentos</h1>
+            <p class="muted">Acompanhe quem assistiu cada treinamento do mês.</p>
+          </div>
+        </div>
+
+        <!-- Sub-abas: Pit Stop / PEV -->
+        <div class="pev-tabs" style="margin-bottom:1.25rem" id="trein-tabs">
+          <button class="pev-tab active" data-trein-tab="pitstop" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Pit Stop
+          </button>
+          <button class="pev-tab" data-trein-tab="pev" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            PEV
+          </button>
+        </div>
+
+        <!-- Painel Pit Stop -->
+        <div id="trein-panel-pitstop">
+          <div class="trein-toolbar">
+            <select class="trein-mes-select" id="trein-mes-select-pitstop"></select>
+            <span class="trein-setor-badge">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Pit Stop
+            </span>
+            <button class="btn btn-gold" id="trein-btn-novo-pitstop" type="button" style="margin-left:auto">+ Novo Treinamento</button>
+          </div>
+          <div class="trein-list" id="trein-list-pitstop"></div>
+        </div>
+
+        <!-- Painel PEV -->
+        <div id="trein-panel-pev" style="display:none">
+          <div class="trein-toolbar">
+            <select class="trein-mes-select" id="trein-mes-select-pev"></select>
+            <span class="trein-setor-badge" style="border-color:rgba(88,101,242,.3);background:rgba(88,101,242,.1);color:#7b8bff">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              PEV
+            </span>
+            <button class="btn btn-gold" id="trein-btn-novo-pev" type="button" style="margin-left:auto">+ Novo Treinamento</button>
+          </div>
+          <div class="trein-list" id="trein-list-pev"></div>
         </div>
 
       </section>
@@ -1216,11 +1277,55 @@
     <script src="gestao-pitstop.js"></script>
     <script src="gestao-pev.js"></script>
     <script src="gestao-pev-importacoes.js"></script>
+    <script src="gestao-treinamentos.js"></script>
     <script src="escala-fds.js"></script>
     <!-- ✅ CORREÇÃO: Script de inicialização ANTES do dashboard -->
     <script src="sistema-inicializacao.js"></script>
     <script src="dashboard-charts.js"></script>
     <script src="mapa-brasil.js"></script>
+
+    <!-- ── Treinamentos: sub-abas e init ── -->
+    <script>
+      (function () {
+        // Sub-abas Pit Stop / PEV dentro de #page-treinamentos
+        function initTreinTabs() {
+          document.querySelectorAll('[data-trein-tab]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              document.querySelectorAll('[data-trein-tab]').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              const setor = btn.dataset.treinTab;
+              document.getElementById('trein-panel-pitstop').style.display = setor === 'pitstop' ? '' : 'none';
+              document.getElementById('trein-panel-pev').style.display     = setor === 'pev'     ? '' : 'none';
+              if (window.Trein) await Trein.init(setor);
+            });
+          });
+        }
+
+        // Inicializa quando a aba principal "treinamentos" é clicada
+        function hookMainTab() {
+          document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+            if (tab.dataset.tab === 'treinamentos') {
+              tab.addEventListener('click', async () => {
+                if (window.Trein && !tab._treinInit) {
+                  tab._treinInit = true;
+                  initTreinTabs();
+                  await Trein.init('pitstop');
+                } else if (window.Trein) {
+                  const setor = document.querySelector('[data-trein-tab].active')?.dataset.treinTab || 'pitstop';
+                  await Trein.init(setor);
+                }
+              });
+            }
+          });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', hookMainTab);
+        } else {
+          hookMainTab();
+        }
+      })();
+    </script>
 
     <!-- Sub-abas FDS (Diária / Mensal) -->
     <script>
@@ -1743,6 +1848,12 @@
         markRead(id) {
           const n = _notifications.find(x => x.id === id);
           if (n) { n.lido = true; saveNotifs(); renderBell(); }
+        },
+        // Remove todas as notificações vinculadas a uma importação específica
+        _removeByImportId(importId) {
+          const before = _notifications.length;
+          _notifications = _notifications.filter(n => n.id !== 'imp_' + importId);
+          if (_notifications.length !== before) { saveNotifs(); renderBell(); }
         }
       };
 
@@ -1872,8 +1983,102 @@
       // ── Init ─────────────────────────────────────────────────────────
       renderBell();
       setTimeout(checkAniversariosProximoMes, 600);
+
+      // ── Ponte Supabase → Sino ────────────────────────────────────────
+      // Busca avisos e importações pendentes do Supabase e injeta no sino.
+      // Roda 1s após o load (dá tempo do supa inicializar) e repete a cada 60s.
+
+      const NOTIF_SEEN_KEY = 'notif_seen_ids_v1';
+
+      function getSeenIds() {
+        try { return new Set(JSON.parse(localStorage.getItem(NOTIF_SEEN_KEY) || '[]')); }
+        catch { return new Set(); }
+      }
+      function markSeen(ids) {
+        const seen = getSeenIds();
+        ids.forEach(id => seen.add(String(id)));
+        // Mantém no máximo 500 IDs para não crescer indefinidamente
+        const arr = [...seen].slice(-500);
+        localStorage.setItem(NOTIF_SEEN_KEY, JSON.stringify(arr));
+      }
+
+      async function syncNotifFromSupabase() {
+        if (typeof supa === 'undefined' || !supa) return;
+        const seen = getSeenIds();
+        const novos = [];
+
+        try {
+          // ── 1. Importações PEV pendentes ──────────────────────────────
+          const { data: imports } = await supa
+            .from('pev_importacoes')
+            .select('id, empresa, discord_nome, criado_em, status')
+            .eq('status', 'pendente')
+            .order('criado_em', { ascending: false })
+            .limit(30);
+
+          (imports || []).forEach(imp => {
+            const notifId = 'imp_' + imp.id;
+            if (seen.has(notifId)) return;
+            novos.push({ id: notifId, tipo: 'info',
+              titulo: '📥 Nova solicitação de migração',
+              corpo: `${imp.empresa}${imp.discord_nome ? ' · @' + imp.discord_nome : ''}`,
+              icone: '📥', ts: new Date(imp.criado_em).getTime() || Date.now() });
+          });
+
+          // ── 2. Avisos recentes (últimas 24h) ──────────────────────────
+          const desde = new Date(Date.now() - 86400000).toISOString();
+          const { data: avisos } = await supa
+            .from('avisos')
+            .select('id, titulo, mensagem, created_at, criado_em')
+            .or(`created_at.gte.${desde},criado_em.gte.${desde}`)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+          (avisos || []).forEach(av => {
+            const notifId = 'av_' + av.id;
+            if (seen.has(notifId)) return;
+            const ts = new Date(av.created_at || av.criado_em).getTime() || Date.now();
+            novos.push({ id: notifId, tipo: 'aviso',
+              titulo: '📢 ' + av.titulo,
+              corpo: av.mensagem || '',
+              icone: '📢', ts });
+          });
+
+        } catch(e) {
+          console.warn('[NotifSync] Erro ao buscar notificações:', e.message);
+          return;
+        }
+
+        if (!novos.length) return;
+
+        // Injeta em ordem cronológica (mais antigo primeiro para o unshift ficar certo)
+        novos.sort((a, b) => a.ts - b.ts).forEach(n => {
+          // Adiciona diretamente ao array interno via API pública, com ts correto
+          window.NotifBell.addRaw(n);
+        });
+
+        markSeen(novos.map(n => n.id));
+      }
+
+      // Expõe addRaw para aceitar ts customizado (sem sobrescrever Date.now())
+      const _origAdd = window.NotifBell.add.bind(window.NotifBell);
+      window.NotifBell.addRaw = function(n) {
+        // Chama o add normal e depois corrige o timestamp
+        const added = _origAdd(n.tipo, n.titulo, n.corpo, n.icone);
+        if (added) { added.ts = n.ts || added.ts; saveNotifs(); renderBell(); }
+      };
+
+      // Roda após supa inicializar e repete a cada 60s
+      setTimeout(syncNotifFromSupabase, 1500);
+      setInterval(syncNotifFromSupabase, 60000);
     })();
     </script>
+
+
+    <!-- ── Modal Treinamentos ── -->
+    <div id="trein-modal-overlay">
+      <div id="trein-modal"></div>
+    </div>
 
   </body>
 </html>

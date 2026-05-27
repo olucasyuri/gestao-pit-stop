@@ -103,6 +103,9 @@ async function PEV_aprovarImportacao(id) {
     PEV_renderImportacoes();
     PEV_updateImportCount();
 
+    // Remove a notificação do sino para esta importação
+    _notifMarkImportSeen(id);
+
     const dmOk = json.hermes?.ok !== false;
     if (typeof toast === 'function') {
       toast(dmOk ? '✅ Aprovado! DM enviada no Discord.' : '✅ Aprovado! (DM não enviada — discord_id ausente no registro)');
@@ -135,6 +138,9 @@ async function PEV_reprovarImportacao(id) {
     PEV_renderImportacoes();
     PEV_updateImportCount();
 
+    // Remove a notificação do sino para esta importação
+    _notifMarkImportSeen(id);
+
     const dmOk = json.hermes?.ok !== false;
     if (typeof toast === 'function') {
       toast(dmOk ? '❌ Reprovado. DM enviada no Discord.' : '❌ Reprovado. (DM não enviada — discord_id ausente no registro)');
@@ -143,6 +149,22 @@ async function PEV_reprovarImportacao(id) {
     console.error('[PEV] Erro ao reprovar via API:', e);
     if (typeof toast === 'function') toast('⚠️ Erro ao reprovar: ' + e.message);
   }
+}
+
+/** Remove do sino a notificação de uma importação específica (após aprovar/reprovar). */
+function _notifMarkImportSeen(importId) {
+  try {
+    // Marca como "visto" no cache de IDs para não reaparecer
+    const key = 'notif_seen_ids_v1';
+    const seen = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+    seen.add('imp_' + importId);
+    localStorage.setItem(key, JSON.stringify([...seen].slice(-500)));
+
+    // Remove do NotifBell se estiver lá
+    if (window.NotifBell?._removeByImportId) {
+      window.NotifBell._removeByImportId(importId);
+    }
+  } catch(e) { /* silencioso */ }
 }
 
 async function PEV_notificarColaborador(item, statusNovo) {

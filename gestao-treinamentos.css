@@ -1,0 +1,485 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TREINAMENTOS — Estilos
+   Segue o design system existente (variáveis CSS de gestao-pev.css)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Cabeçalho da seção ─────────────────────────────────────────── */
+.trein-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.trein-header-left h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 2px;
+}
+
+.trein-header-left .eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 4px;
+}
+
+.trein-header-left p.muted {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Filtro de mês ──────────────────────────────────────────────── */
+.trein-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+/* Seletor de mês customizado — substitui o <select> nativo */
+.trein-mes-wrap {
+  position: relative;
+  display: inline-block;
+  min-width: 140px;
+}
+
+.trein-mes-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s, background .15s;
+  width: 100%;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.trein-mes-btn:hover { border-color: var(--gold); background: rgba(255,255,255,0.03); }
+.trein-mes-btn.open  { border-color: var(--gold); }
+
+.trein-mes-btn svg {
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.trein-mes-btn.open svg { transform: rotate(180deg); }
+
+.trein-mes-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 100%;
+  background: #1c1c26;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 5px;
+  z-index: 200;
+  display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+}
+.trein-mes-dropdown.open { display: block; }
+
+.trein-mes-option {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s, color .12s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.trein-mes-option:hover  { background: rgba(255,255,255,0.06); color: var(--text); }
+.trein-mes-option.active { background: var(--gold-bg); color: var(--gold); font-weight: 700; }
+
+/* Mantém o <select> oculto (fallback acessibilidade) */
+.trein-mes-select { display: none; }
+
+.trein-setor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--gold-border);
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+
+/* ── Cards de treinamento ───────────────────────────────────────── */
+.trein-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.trein-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.trein-card:hover { border-color: var(--border2); }
+
+.trein-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.trein-card-header:hover { background: rgba(255,255,255,0.02); }
+
+.trein-card-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.trein-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trein-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trein-mes-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+.trein-progress-mini {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.trein-progress-mini strong {
+  color: var(--green);
+}
+
+/* Barra de progresso pequena no card */
+.trein-prog-bar-wrap {
+  width: 80px;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.trein-prog-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.trein-prog-bar-fill.amarelo { background: var(--gold); }
+.trein-prog-bar-fill.vermelho { background: var(--red); }
+
+.trein-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.trein-chevron {
+  color: var(--text-muted);
+  transition: transform .25s ease;
+  flex-shrink: 0;
+}
+.trein-card.open .trein-chevron { transform: rotate(180deg); }
+
+/* ── Corpo expansível ───────────────────────────────────────────── */
+.trein-card-body {
+  display: none;
+  padding: 16px 18px;
+}
+.trein-card.open .trein-card-body { display: block; }
+
+.trein-descricao {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+  line-height: 1.55;
+}
+
+/* ── Grid de presenças ──────────────────────────────────────────── */
+.trein-presencas-titulo {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.trein-presencas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.trein-presenca-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: rgba(255,255,255,0.03);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  white-space: nowrap;
+}
+
+.trein-presenca-chip:hover {
+  background: rgba(255,255,255,0.07);
+}
+
+/* Status: assistiu */
+.trein-presenca-chip.assistiu {
+  background: var(--green-bg);
+  border-color: var(--green-border);
+  color: var(--green);
+}
+
+/* Status: pendente */
+.trein-presenca-chip.pendente {
+  background: rgba(255,255,255,0.03);
+  border-color: var(--border2);
+  color: var(--text-muted);
+}
+
+.trein-presenca-chip .chip-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+  transition: background .15s;
+}
+
+.trein-presenca-chip.assistiu .chip-icon {
+  background: rgba(61,214,140,0.2);
+}
+
+/* ── Resumo de status ────────────────────────────────────────────── */
+.trein-resumo-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.trein-resumo-item {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.trein-resumo-item strong { color: var(--text); }
+
+/* ── Botões de ação no card ─────────────────────────────────────── */
+.trein-btn-icon {
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 5px 7px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s, border-color .15s;
+  line-height: 1;
+}
+.trein-btn-icon:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--border2); }
+.trein-btn-icon.delete:hover { color: var(--red); border-color: var(--red-border); background: var(--red-bg); }
+
+/* ── Estado vazio ───────────────────────────────────────────────── */
+.trein-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.trein-empty svg {
+  display: block;
+  margin: 0 auto 12px;
+  opacity: .3;
+}
+.trein-empty strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+/* ── Modal de criar/editar treinamento ──────────────────────────── */
+#trein-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 900;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#trein-modal-overlay.open { display: flex; }
+
+#trein-modal {
+  background: #17171e;
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  padding: 24px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#trein-modal h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 18px;
+}
+
+.trein-form-group {
+  margin-bottom: 14px;
+}
+
+.trein-form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 6px;
+}
+
+.trein-form-group input,
+.trein-form-group textarea,
+.trein-form-group select {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 12px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .15s;
+  font-family: inherit;
+  resize: vertical;
+}
+.trein-form-group input:focus,
+.trein-form-group textarea:focus,
+.trein-form-group select:focus { border-color: var(--gold); }
+.trein-form-group textarea { min-height: 70px; }
+.trein-form-group select option { background: #1a1a24; }
+
+/* Checkboxes de colaboradores */
+.trein-colab-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.trein-colab-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: rgba(255,255,255,0.02);
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: all .15s;
+}
+.trein-colab-check:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+.trein-colab-check input[type=checkbox] { accent-color: var(--gold); width: 13px; height: 13px; }
+.trein-colab-check.checked {
+  background: var(--gold-bg);
+  border-color: var(--gold-border);
+  color: var(--gold);
+}
+
+.trein-modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Tabs internas Pit Stop (treinamentos) ──────────────────────── */
+/* Reutiliza as classes .pev-tab e .pev-page já existentes no projeto */
+
+/* ── Responsividade ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .trein-header { flex-direction: column; }
+  .trein-card-header { flex-wrap: wrap; }
+  .trein-presencas-grid { gap: 5px; }
+  .trein-presenca-chip { font-size: 11px; padding: 5px 9px 5px 7px; }
+}
