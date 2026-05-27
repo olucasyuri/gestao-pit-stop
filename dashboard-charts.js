@@ -74,6 +74,22 @@ function lerDados() {
   };
 }
 
+/* ─── Helper: detecta se um registro é férias ───────────────
+   O status é salvo como "ferias:YYYY-MM-DD" ou "ferias",
+   e o campo tipo pode ser "ferias". Qualquer um basta.       */
+function dcIsFerias(f) {
+  var s = String(f.status || '').toLowerCase();
+  return s === 'ferias' || s.startsWith('ferias:') || s.includes('férias') ||
+         f.tipo === 'ferias';
+}
+
+/* ─── Helper: data de fim das férias ───────────────────────── */
+function dcFeriasFim(f) {
+  var s = String(f.status || '');
+  var m = s.match(/(?:ferias|férias):(\d{4}-\d{2}-\d{2})/i);
+  return f.data_fim || f.data_final || (m ? m[1] : null) || f.data_folga;
+}
+
 /* ─── Gráfico de Pizza SVG (donut) ───────────────────── */
 function buildPie(slices, size) {
   size = size || 100;
@@ -200,19 +216,19 @@ async function renderDashboardCharts() {
 
   /* Folgas e Férias */
   var hoje = new Date(); hoje.setHours(0,0,0,0);
-  var folgasAtivas  = folgas.filter(function(f) { return f.status !== 'ferias' && f.tipo !== 'ferias' && new Date(f.data_folga + 'T00:00:00') >= hoje; });
+  var folgasAtivas  = folgas.filter(function(f) { return !dcIsFerias(f) && new Date(f.data_folga + 'T00:00:00') >= hoje; });
   var feriasAtivas  = folgas.filter(function(f) {
-    return (f.status === 'ferias' || f.tipo === 'ferias') && new Date((f.data_fim||f.data_folga) + 'T00:00:00') >= hoje;
+    return dcIsFerias(f) && new Date(dcFeriasFim(f) + 'T00:00:00') >= hoje;
   });
   
   // Debug: log de férias encontradas
   console.log('📊 Dashboard - Folgas totais:', folgas.length);
   console.log('📊 Dashboard - Férias ativas:', feriasAtivas.length, feriasAtivas);
   
-  var folgasHoje    = folgas.filter(function(f) { return f.data_folga === today && f.status !== 'ferias' && f.tipo !== 'ferias'; });
+  var folgasHoje    = folgas.filter(function(f) { return f.data_folga === today && !dcIsFerias(f); });
   var feriasHoje    = folgas.filter(function(f) {
-    if (f.status !== 'ferias' && f.tipo !== 'ferias') return false;
-    return today >= f.data_folga && today <= (f.data_fim || f.data_folga);
+    if (!dcIsFerias(f)) return false;
+    return today >= f.data_folga && today <= dcFeriasFim(f);
   });
   var proxFolgas    = folgasAtivas.slice(0, 4);
   var proxFerias    = feriasAtivas.slice(0, 4);
@@ -234,8 +250,8 @@ async function renderDashboardCharts() {
   var impRecentes = importacoes.slice(0, 5);
 
   /* Séries 7 dias */
-  var folgasSerie     = dias.map(function(d) { return folgas.filter(function(f) { return f.data_folga === d.iso && f.status !== 'ferias' && f.tipo !== 'ferias'; }).length; });
-  var feriasSerie     = dias.map(function(d) { return folgas.filter(function(f) { if(f.status !== 'ferias'&&f.tipo !== 'ferias') return false; return d.iso >= f.data_folga && d.iso <= (f.data_fim||f.data_folga); }).length; });
+  var folgasSerie     = dias.map(function(d) { return folgas.filter(function(f) { return f.data_folga === d.iso && !dcIsFerias(f); }).length; });
+  var feriasSerie     = dias.map(function(d) { return folgas.filter(function(f) { if(!dcIsFerias(f)) return false; return d.iso >= f.data_folga && d.iso <= dcFeriasFim(f); }).length; });
   var pendSerie       = dias.map(function(d) { return pendencias.filter(function(p) { return p.criado_em && p.criado_em.slice(0,10) === d.iso; }).length; });
   var importSerie     = dias.map(function(d) { return importacoes.filter(function(i) { return i.criado_em && i.criado_em.slice(0,10) === d.iso; }).length; });
   var presenteSerie   = dias.map(function(d) {
@@ -521,7 +537,7 @@ function dcAbrirModal(cardId) {
     cor = DC.gold; titulo = '📅 Folgas futuras';
     var hd = new Date(); hd.setHours(0,0,0,0);
     var lista = d.folgas.filter(function(f) {
-      return f.status!=='ferias' && f.tipo!=='ferias' && new Date(f.data_folga+'T00:00:00')>=hd;
+      return !dcIsFerias(f) && new Date(f.data_folga+'T00:00:00')>=hd;
     }).sort(function(a,b){ return a.data_folga.localeCompare(b.data_folga); });
     var hc = lista.filter(function(f){ return f.data_folga===hoje; }).length;
     subtitulo = hc + ' hoje · ' + lista.length + ' agendadas';
@@ -541,9 +557,9 @@ function dcAbrirModal(cardId) {
     cor = DC.blue; titulo = '🏖 Férias ativas';
     var hd = new Date(); hd.setHours(0,0,0,0);
     var lista = d.folgas.filter(function(f) {
-      return (f.status==='ferias'||f.tipo==='ferias') && new Date((f.data_fim||f.data_folga)+'T00:00:00')>=hd;
+      return dcIsFerias(f) && new Date(dcFeriasFim(f)+'T00:00:00')>=hd;
     }).sort(function(a,b){ return a.data_folga.localeCompare(b.data_folga); });
-    var hc = lista.filter(function(f){ return hoje>=f.data_folga && hoje<=(f.data_fim||f.data_folga); }).length;
+    var hc = lista.filter(function(f){ return hoje>=f.data_folga && hoje<=dcFeriasFim(f); }).length;
     subtitulo = hc + ' hoje · ' + lista.length + ' agendadas';
     conteudo = lista.length===0
       ? '<div class="dcm-empty">Nenhuma férias ativa</div>'
@@ -551,7 +567,7 @@ function dcAbrirModal(cardId) {
           var nome = f.colaborador_nome||f.nome||'?';
           var ini = f.data_folga ? new Date(f.data_folga+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
           var fim = f.data_fim   ? new Date(f.data_fim+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : ini;
-          var now = hoje>=f.data_folga && hoje<=(f.data_fim||f.data_folga);
+          var now = hoje>=f.data_folga && hoje<=dcFeriasFim(f);
           return '<div class="dcm-row">' +
             '<div class="dcm-av" style="background:rgba(96,165,250,.12);color:' + DC.blue + '">' + dcEsc(nome.charAt(0).toUpperCase()) + '</div>' +
             '<div class="dcm-info"><strong>' + dcEsc(nome) + '</strong><span>' + ini + ' → ' + fim + '</span></div>' +
@@ -643,14 +659,14 @@ function injectDcCSS() {
   style.textContent = `
 #dc-dashboard-charts { margin-bottom: 1.5rem; }
 
-/* KPI row — 6 colunas compactas */
+/* KPI row — 6 colunas, sempre ocupa toda a largura */
 .dc2-kpi-row {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
-@media(max-width:1100px) { .dc2-kpi-row { grid-template-columns: repeat(3,1fr); } }
+@media(max-width:1200px) { .dc2-kpi-row { grid-template-columns: repeat(3,1fr); } }
 @media(max-width:680px)  { .dc2-kpi-row { grid-template-columns: repeat(2,1fr); } }
 
 .dc2-kpi-card {
@@ -686,11 +702,11 @@ function injectDcCSS() {
 /* Rows de 3 colunas */
 .dc2-row-3 {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
 }
-@media(max-width:1100px) { .dc2-row-3 { grid-template-columns: 1fr 1fr; } }
+@media(max-width:1200px) { .dc2-row-3 { grid-template-columns: 1fr 1fr; } }
 @media(max-width:680px)  { .dc2-row-3 { grid-template-columns: 1fr; } }
 
 /* Card base */
