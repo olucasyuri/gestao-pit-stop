@@ -6,6 +6,28 @@
  */
 "use strict";
 
+/* ─── Cliente Supabase (compartilhado com gestao-pitstop.js) ──────────── */
+/**
+ * Retorna o cliente Supabase já instanciado por gestao-pitstop.js, ou null.
+ * Usa window.supabase como fallback para criar um novo cliente se necessário.
+ */
+function getSupaClient() {
+  // Tenta reutilizar o cliente já criado em gestao-pitstop.js
+  if (typeof supa !== 'undefined' && supa) return supa;
+  // Fallback: cria a partir das constantes globais (se disponíveis)
+  try {
+    if (
+      typeof SUPABASE_URL !== 'undefined' &&
+      typeof SUPABASE_ANON_KEY !== 'undefined' &&
+      SUPABASE_ANON_KEY !== 'COLE_SUA_CHAVE_ANON_AQUI' &&
+      window.supabase
+    ) {
+      return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  } catch (e) { /* ignorar */ }
+  return null;
+}
+
 /* ─── Mapeamento cidade/região PEV → UF ─────────────────── */
 const MAPA_REGIAO_UF = {
   "Aracaju":                  "SE",
@@ -86,6 +108,67 @@ function mapaLerDados() {
   const pevColabs      = tryParse('pev_colaboradores', []);
   const mapaEstados    = tryParse('mapa_estados_pitstop', {});
   return { pitstopColabs, pitstopFlags, pevColabs, mapaEstados };
+}
+
+/**
+ * Carrega os estados do mapa do Supabase e atualiza o localStorage.
+ * Chama renderMapaBrasil() ao concluir se houve dados.
+ */
+async function mapaCarregarEstadosSupabase() {
+  const supaClient = getSupaClient();
+  if (!supaClient) return;
+
+  try {
+    const { data, error } = await supaClient
+      .from('mapa_estados_pitstop')
+      .select('colaborador_nome, estado_uf');
+
+    if (error) {
+      console.warn('[mapa] Tabela mapa_estados_pitstop nao encontrada — usando localStorage.', error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      const mapaEstados = {};
+      data.forEach(row => {
+        if (row.colaborador_nome && row.estado_uf) {
+          mapaEstados[row.colaborador_nome] = row.estado_uf;
+        }
+      });
+      localStorage.setItem('mapa_estados_pitstop', JSON.stringify(mapaEstados));
+      renderMapaBrasil();
+    }
+  } catch (err) {
+    console.warn('[mapa] Erro ao carregar estados do Supabase:', err);
+  }
+}
+
+/**
+ * Salva os estados do mapa no Supabase (upsert por colaborador_nome).
+ * @param {Object} mapaEstados — { [nome]: uf }
+ */
+async function mapaSalvarEstadosSupabase(mapaEstados) {
+  const supaClient = getSupaClient();
+  if (!supaClient) return;
+
+  const rows = Object.entries(mapaEstados).map(([nome, uf]) => ({
+    colaborador_nome: nome,
+    estado_uf: uf,
+  }));
+
+  if (rows.length === 0) return;
+
+  try {
+    const { error } = await supaClient
+      .from('mapa_estados_pitstop')
+      .upsert(rows, { onConflict: 'colaborador_nome' });
+
+    if (error) {
+      console.warn('[mapa] Erro ao salvar estados no Supabase:', error);
+    }
+  } catch (err) {
+    console.warn('[mapa] Erro ao salvar estados no Supabase:', err);
+  }
 }
 
 /* ─── Agregar por UF ────────────────────────────────────────── */
@@ -602,7 +685,7 @@ function mapaFecharConfig() {
   if (modal) modal.style.display = 'none';
 }
 
-function mapaAlvarConfig() {
+async function mapaAlvarConfig() {
   const list = document.getElementById('mapa-modal-list');
   if (!list) return;
 
@@ -613,7 +696,12 @@ function mapaAlvarConfig() {
     if (colab && uf) mapaEstados[colab] = uf;
   });
 
+  // 1. Persiste no localStorage (fallback imediato)
   localStorage.setItem('mapa_estados_pitstop', JSON.stringify(mapaEstados));
+
+  // 2. Persiste no Supabase (fonte primária — garante que recarregar a página mantém os dados)
+  await mapaSalvarEstadosSupabase(mapaEstados);
+
   mapaFecharConfig();
   renderMapaBrasil();
   if (typeof toast === 'function') toast('✅ Estados salvos no mapa.');
@@ -896,6 +984,8 @@ function mapaMontarNoDOM() {
 
   mapaInjetarCSS();
   waitForMapaDataThenRender();
+  // Carrega estados do Supabase (sobrepõe localStorage se houver dados mais recentes)
+  mapaCarregarEstadosSupabase();
 }
 
 /* ─── Aguardar dados estarem prontos ─────────────────────────── */
