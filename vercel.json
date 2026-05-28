@@ -1,8 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/hermes", "destination": "/api/hermes" },
-    { "source": "/api/notificacoes", "destination": "/api/notificacoes" },
-    { "source": "/api/pev-importacao", "destination": "/api/pev-importacao" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
