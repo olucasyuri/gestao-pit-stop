@@ -1,19 +1,22 @@
 /**
- * API Route: /api/pev-importacao
+ * API Route: /api/pev-importacao  (versão endurecida para produção)
  *
- * Recebe dados do bot Discord quando o colaborador usa /importação de dados.
- * Persiste no Supabase (tabela pev_importacoes).
- *
- * Campos adicionais para fluxo de aprovação:
- *   - discord_id   : ID numérico do usuário no Discord (para enviar DM)
- *   - discord_nome : Display name no Discord
- *   - status       : 'pendente' | 'aprovado' | 'reprovado'
- *   - status_em    : ISO timestamp da última mudança de status
- *   - motivo_reprovacao : texto livre
+ * MUDANÇAS DE SEGURANÇA vs. versão anterior:
+ *   1. Ações internas (aprovar/reprovar/toggle-agendado/PATCH/DELETE) agora
+ *      EXIGEM um usuário autenticado (token Supabase) — antes pulavam o secret.
+ *   2. Criação vinda do bot Discord (POST create) exige x-api-secret OU
+ *      um usuário autenticado (criação manual pelo gestor no site).
+ *   3. CORS restrito à origem do site (env PUBLIC_SITE_URL); o bot é
+ *      servidor-para-servidor e não depende de CORS.
+ *   4. Rate limit por IP.
  */
+
+import { getBearer, getUserFromToken } from './_auth.js';
+import { rateLimit, clientIp } from './_ratelimit.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SITE_ORIGIN  = process.env.PUBLIC_SITE_URL || '';
 
 async function supaReq(path, { method = 'GET', body } = {}) {
   if (!SUPABASE_URL || !SERVICE_KEY) throw new Error('Supabase não configurado no servidor.');
@@ -89,21 +92,44 @@ function formatCNPJ(v) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // ── CORS: somente a origem do site (se configurada) ─────────────────────
+  if (SITE_ORIGIN) res.setHeader('Access-Control-Allow-Origin', SITE_ORIGIN);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-secret');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // ── Rate limit por IP ────────────────────────────────────────────────────
+  const rl = rateLimit(`pev-import:${clientIp(req)}`, 60, 60_000);
+  if (!rl.ok) {
+    res.setHeader('Retry-After', String(rl.retryAfter));
+    return res.status(429).json({ error: 'Muitas requisições. Tente novamente em instantes.' });
+  }
+
   const API_SECRET = process.env.API_SECRET;
-  if (API_SECRET) {
-    const provided = req.headers['x-api-secret'] || req.query.secret;
-    // Actions internas do dashboard (aprovar/reprovar) não exigem secret —
-    // são operações do gestor no próprio site, não chamadas externas do bot.
-    const action = req.body?.action || req.query?.action || '';
-    const isInternalAction = ['aprovar', 'reprovar', 'toggle-agendado'].includes(action) || req.method === 'DELETE';
-    if (!isInternalAction && provided !== API_SECRET) {
+  const action = req.body?.action || req.query?.action || '';
+  const isInternalAction =
+    ['aprovar', 'reprovar', 'toggle-agendado'].includes(action) ||
+    req.method === 'DELETE' || req.method === 'PUT' || req.method === 'PATCH';
+
+  // Usuário logado? (token enviado pelo front via wrapper de fetch)
+  const user = await getUserFromToken(getBearer(req));
+  const secretOk = API_SECRET ? (req.headers['x-api-secret'] === API_SECRET) : false;
+
+  // ── Autorização ──────────────────────────────────────────────────────────
+  // Ações internas: SOMENTE usuário autenticado (gestor logado no site).
+  if (isInternalAction && !user) {
+    return res.status(401).json({ error: 'Sessão necessária. Faça login no painel.' });
+  }
+  // Criação (bot ou manual): aceita secret do bot OU gestor logado.
+  if (!isInternalAction && req.method === 'POST') {
+    if (!user && !(API_SECRET && secretOk)) {
       return res.status(401).json({ error: 'Não autorizado.' });
     }
+  }
+  // GET (listar): exige login.
+  if (req.method === 'GET' && !user) {
+    return res.status(401).json({ error: 'Sessão necessária.' });
   }
 
   try {
@@ -115,7 +141,7 @@ export default async function handler(req, res) {
 
     // ── POST: criar novo registro (vindo do bot Discord ou manual) ────────
     if (req.method === 'POST') {
-      const { empresa, cnpj, importacao, discord_user, discord_nome, discord_id, obs, data_virada, action } = req.body || {};
+      const { empresa, cnpj, importacao, discord_user, discord_nome, discord_id, obs, data_virada } = req.body || {};
 
       if (!action || action === 'create') {
         if (!empresa || !cnpj) {
@@ -146,13 +172,11 @@ export default async function handler(req, res) {
         const { id } = req.body || {};
         if (!id) return res.status(400).json({ error: 'id obrigatório.' });
 
-        // Busca o registro completo ANTES do PATCH para ter discord_id, discord_nome, etc.
         const registros = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`);
         const registroOriginal = Array.isArray(registros) ? registros[0] : registros;
 
         const updates = { status: 'aprovado', status_em: new Date().toISOString() };
         const data = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
-        // Mescla o registro original com os campos atualizados para ter todos os campos
         const item = { ...registroOriginal, ...(Array.isArray(data) ? data[0] : data), ...updates };
 
         let hermesResult = null;
@@ -167,7 +191,6 @@ export default async function handler(req, res) {
         const { id, motivo_reprovacao } = req.body || {};
         if (!id) return res.status(400).json({ error: 'id obrigatório.' });
 
-        // Busca o registro completo ANTES do PATCH para ter discord_id, discord_nome, etc.
         const registros = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`);
         const registroOriginal = Array.isArray(registros) ? registros[0] : registros;
 
@@ -177,7 +200,6 @@ export default async function handler(req, res) {
           motivo_reprovacao: String(motivo_reprovacao || '').trim(),
         };
         const data = await supaReq(`pev_importacoes?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: updates });
-        // Mescla o registro original com os campos atualizados para ter todos os campos
         const item = { ...registroOriginal, ...(Array.isArray(data) ? data[0] : data), ...updates };
 
         let hermesResult = null;

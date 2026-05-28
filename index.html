@@ -1355,6 +1355,8 @@
     <!-- ===== SCRIPTS ===== -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Porteiro de acesso: DEVE vir logo apos o supabase-js e antes do app -->
+    <script src="auth-gate.js"></script>
     <script src="gestao-pitstop.js"></script>
     <script src="gestao-pev.js"></script>
     <script src="gestao-pev-importacoes.js"></script>
@@ -2110,15 +2112,15 @@
           const desde = new Date(Date.now() - 86400000).toISOString();
           const { data: avisos } = await supa
             .from('avisos')
-            .select('id, titulo, mensagem, created_at, criado_em')
-            .or(`created_at.gte.${desde},criado_em.gte.${desde}`)
-            .order('created_at', { ascending: false })
+            .select('id, titulo, mensagem, criado_em')
+            .gte('criado_em', desde)
+            .order('criado_em', { ascending: false })
             .limit(20);
 
           (avisos || []).forEach(av => {
             const notifId = 'av_' + av.id;
             if (seen.has(notifId)) return;
-            const ts = new Date(av.created_at || av.criado_em).getTime() || Date.now();
+            const ts = new Date(av.criado_em).getTime() || Date.now();
             novos.push({ id: notifId, tipo: 'aviso',
               titulo: '📢 ' + av.titulo,
               corpo: av.mensagem || '',

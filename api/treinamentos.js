@@ -1,30 +1,14 @@
 /**
- * API Route: /api/treinamentos
- *
- * CRUD completo para a tabela `treinamentos` e `treinamento_presencas`.
- *
- * Tabelas necessárias no Supabase:
- *
- *   CREATE TABLE treinamentos (
- *     id          TEXT PRIMARY KEY,
- *     titulo      TEXT NOT NULL,
- *     descricao   TEXT,
- *     setor       TEXT NOT NULL,          -- 'pitstop' | 'pev'
- *     mes_ref     TEXT NOT NULL,          -- 'YYYY-MM'
- *     criado_em   TIMESTAMPTZ DEFAULT NOW()
- *   );
- *
- *   CREATE TABLE treinamento_presencas (
- *     id              TEXT PRIMARY KEY,
- *     treinamento_id  TEXT NOT NULL REFERENCES treinamentos(id) ON DELETE CASCADE,
- *     colaborador     TEXT NOT NULL,
- *     status          TEXT NOT NULL DEFAULT 'pendente',   -- 'assistiu' | 'pendente'
- *     atualizado_em   TIMESTAMPTZ DEFAULT NOW()
- *   );
+ * API Route: /api/treinamentos  (versão endurecida)
+ * CRUD para `treinamentos` e `treinamento_presencas`.
+ * Agora exige usuário autenticado, com rate limit e CORS restrito.
  */
+import { getBearer, getUserFromToken } from './_auth.js';
+import { rateLimit, clientIp } from './_ratelimit.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SITE_ORIGIN  = process.env.PUBLIC_SITE_URL || '';
 
 async function supaReq(path, { method = 'GET', body } = {}) {
   if (!SUPABASE_URL || !SERVICE_KEY) throw new Error('Supabase não configurado no servidor.');
@@ -44,13 +28,22 @@ async function supaReq(path, { method = 'GET', body } = {}) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (SITE_ORIGIN) res.setHeader('Access-Control-Allow-Origin', SITE_ORIGIN);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-secret');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  const rl = rateLimit(`trein:${clientIp(req)}`, 60, 60_000);
+  if (!rl.ok) {
+    res.setHeader('Retry-After', String(rl.retryAfter));
+    return res.status(429).json({ error: 'Muitas requisições.' });
+  }
+
+  const user = await getUserFromToken(getBearer(req));
+  if (!user) return res.status(401).json({ error: 'Sessão necessária.' });
+
   try {
-    // ── GET: listar treinamentos e presenças ──────────────────────────────
     if (req.method === 'GET') {
       const { setor } = req.query;
       const filtro = setor ? `?setor=eq.${encodeURIComponent(setor)}&order=mes_ref.desc,criado_em.desc` : '?order=mes_ref.desc,criado_em.desc';
@@ -61,7 +54,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ treinamentos: treinamentos || [], presencas: presencas || [] });
     }
 
-    // ── POST: criar treinamento ───────────────────────────────────────────
     if (req.method === 'POST') {
       const { titulo, descricao, setor, mes_ref, colaboradores } = req.body || {};
       if (!titulo || !setor || !mes_ref) return res.status(400).json({ error: 'titulo, setor e mes_ref são obrigatórios.' });
@@ -72,7 +64,6 @@ export default async function handler(req, res) {
         body: { id, titulo, descricao: descricao || '', setor, mes_ref },
       });
 
-      // Cria presenças pendentes para cada colaborador informado
       let presencasCriadas = [];
       if (Array.isArray(colaboradores) && colaboradores.length > 0) {
         const presencas = colaboradores.map(nome => ({
@@ -88,11 +79,9 @@ export default async function handler(req, res) {
       return res.status(201).json({ ok: true, treinamento, presencas: presencasCriadas });
     }
 
-    // ── PATCH: atualizar status de presença OU editar treinamento ─────────
     if (req.method === 'PATCH') {
       const { tipo } = req.body || {};
 
-      // Atualizar presença (assistiu / pendente)
       if (tipo === 'presenca') {
         const { presenca_id, status } = req.body;
         if (!presenca_id || !status) return res.status(400).json({ error: 'presenca_id e status obrigatórios.' });
@@ -103,7 +92,6 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, presenca: updated });
       }
 
-      // Editar título/descrição/mês do treinamento
       if (tipo === 'treinamento') {
         const { id, titulo, descricao, mes_ref } = req.body;
         if (!id) return res.status(400).json({ error: 'id obrigatório.' });
@@ -118,11 +106,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'tipo inválido. Use "presenca" ou "treinamento".' });
     }
 
-    // ── DELETE: remover treinamento (cascade remove presenças) ───────────
     if (req.method === 'DELETE') {
       const { id } = req.body || {};
       if (!id) return res.status(400).json({ error: 'id obrigatório.' });
-      // Remove presenças primeiro (caso não haja CASCADE no banco)
       await supaReq(`treinamento_presencas?treinamento_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
       await supaReq(`treinamentos?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
       return res.status(200).json({ ok: true });
