@@ -112,11 +112,11 @@ function mapaLerDados() {
 
 /**
  * Carrega os estados do mapa do Supabase e atualiza o localStorage.
- * Chama renderMapaBrasil() ao concluir se houve dados.
+ * Retorna true se encontrou dados no Supabase, false caso contrário.
  */
 async function mapaCarregarEstadosSupabase() {
   const supaClient = getSupaClient();
-  if (!supaClient) return;
+  if (!supaClient) return false;
 
   try {
     const { data, error } = await supaClient
@@ -125,7 +125,7 @@ async function mapaCarregarEstadosSupabase() {
 
     if (error) {
       console.warn('[mapa] Tabela mapa_estados_pitstop nao encontrada — usando localStorage.', error);
-      return;
+      return false;
     }
 
     if (data && data.length > 0) {
@@ -135,11 +135,16 @@ async function mapaCarregarEstadosSupabase() {
           mapaEstados[row.colaborador_nome] = row.estado_uf;
         }
       });
-      localStorage.setItem('mapa_estados_pitstop', JSON.stringify(mapaEstados));
-      renderMapaBrasil();
+      // Mescla com localStorage: Supabase é fonte primária, mas mantém entradas locais não salvas ainda
+      const localEstados = JSON.parse(localStorage.getItem('mapa_estados_pitstop') || '{}');
+      const merged = Object.assign({}, localEstados, mapaEstados);
+      localStorage.setItem('mapa_estados_pitstop', JSON.stringify(merged));
+      return true;
     }
+    return false;
   } catch (err) {
     console.warn('[mapa] Erro ao carregar estados do Supabase:', err);
+    return false;
   }
 }
 
@@ -253,8 +258,9 @@ async function renderMapaBrasil() {
 
   const allTotals  = Object.values(ufMap).map(d => d.total);
   const maxTotal   = Math.max(...allTotals, 1);
-  const totalPIT   = pitstopColabs.length;
-  const totalPEV   = pevColabs.length;
+  // Conta apenas colaboradores que aparecem de fato no mapa (UF resolvida)
+  const totalPIT   = Object.values(ufMap).reduce((s, d) => s + d.pit.length, 0);
+  const totalPEV   = Object.values(ufMap).reduce((s, d) => s + d.pev.length, 0);
   const totalGeral = Object.values(ufMap).reduce((s, d) => s + d.total, 0);
   const estadosAtivos = Object.keys(ufMap).length;
 
@@ -513,9 +519,11 @@ function mapaBindTooltip(ufMap) {
         `<span class="mapa-tt-colab">${c.nome}</span>`
       ).join('');
 
+      const pitAtivos = dados.pit.filter(c => c.ativo).length;
+      const totalTooltip = pitAtivos + dados.pev.length;
       tooltip.innerHTML = `
         <div class="mapa-tt-header">${NOME_ESTADO[uf] || uf} <span class="mapa-tt-uf">${uf}</span></div>
-        <div class="mapa-tt-total">${dados.total} colaborador${dados.total !== 1 ? 'es' : ''} ativo${dados.total !== 1 ? 's' : ''}</div>
+        <div class="mapa-tt-total">${totalTooltip} colaborador${totalTooltip !== 1 ? 'es' : ''} ativo${totalTooltip !== 1 ? 's' : ''}</div>
         ${dados.pev.length > 0 ? `<div class="mapa-tt-sec"><span class="mapa-tt-tag pev">PEV ${dados.pev.length}</span><div class="mapa-tt-names">${pevNomes}</div></div>` : ''}
         ${dados.pit.length > 0 ? `<div class="mapa-tt-sec"><span class="mapa-tt-tag pit">PIT STOP ${dados.pit.length}</span><div class="mapa-tt-names">${pitNomes}</div></div>` : ''}
       `;
@@ -983,13 +991,16 @@ function mapaMontarNoDOM() {
   else page.appendChild(container);
 
   mapaInjetarCSS();
+  // waitForMapaDataThenRender já carrega Supabase antes do primeiro render
   waitForMapaDataThenRender();
-  // Carrega estados do Supabase (sobrepõe localStorage se houver dados mais recentes)
-  mapaCarregarEstadosSupabase();
 }
 
 /* ─── Aguardar dados estarem prontos ─────────────────────────── */
-function waitForMapaDataThenRender() {
+async function waitForMapaDataThenRender() {
+  // 1. Tenta carregar estados do Supabase ANTES do primeiro render
+  //    para garantir que ao recarregar a página os dados apareçam corretamente.
+  await mapaCarregarEstadosSupabase();
+
   let attempts = 0;
   const maxAttempts = 50;
 
@@ -997,9 +1008,8 @@ function waitForMapaDataThenRender() {
     attempts++;
     const pitstopColabs = JSON.parse(localStorage.getItem('pitstop_colaboradores') || '[]');
     const pevColabs     = JSON.parse(localStorage.getItem('pev_colaboradores') || '[]');
-    const mapaEstados   = JSON.parse(localStorage.getItem('mapa_estados_pitstop') || '{}');
 
-    const hasPitStop = pitstopColabs.length > 0 && Object.keys(mapaEstados).length > 0;
+    const hasPitStop = pitstopColabs.length > 0;
     const hasPev     = pevColabs.length > 0;
 
     if (hasPitStop || hasPev) {
