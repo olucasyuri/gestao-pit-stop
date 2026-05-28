@@ -121,7 +121,7 @@ async function mapaCarregarEstadosSupabase() {
   try {
     const { data, error } = await supaClient
       .from('mapa_estados_pitstop')
-      .select('colaborador_nome, estado_uf');
+      .select('colaborador_nome, uf');
 
     if (error) {
       console.warn('[mapa] Tabela mapa_estados_pitstop nao encontrada — usando localStorage.', error);
@@ -131,8 +131,8 @@ async function mapaCarregarEstadosSupabase() {
     if (data && data.length > 0) {
       const mapaEstados = {};
       data.forEach(row => {
-        if (row.colaborador_nome && row.estado_uf) {
-          mapaEstados[row.colaborador_nome] = row.estado_uf;
+        if (row.colaborador_nome && row.uf) {
+          mapaEstados[row.colaborador_nome] = row.uf;
         }
       });
       // Mescla com localStorage: Supabase é fonte primária, mas mantém entradas locais não salvas ainda
@@ -158,7 +158,7 @@ async function mapaSalvarEstadosSupabase(mapaEstados) {
 
   const rows = Object.entries(mapaEstados).map(([nome, uf]) => ({
     colaborador_nome: nome,
-    estado_uf: uf,
+    uf: uf,
   }));
 
   if (rows.length === 0) return;
