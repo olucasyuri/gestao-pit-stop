@@ -458,7 +458,13 @@ async function loadSupabase() {
     console.warn("[Supabase] Tabela pitstop_pendencias não encontrada — usando localStorage. Execute o SQL de criação.", resPendencias.error);
     pendencias = JSON.parse(localStorage.getItem("pitstop_pendencias")) ?? [];
   } else {
-    pendencias = resPendencias.data ?? [];
+    const todasPend = resPendencias.data ?? [];
+    // Abertas (status diferente de 'concluida') vao para o array principal;
+    // concluidas ficam num array separado para a coluna "Concluidas".
+    pendencias = todasPend.filter(p => p.status !== 'concluida');
+    window.pendenciasConcluidas = todasPend
+      .filter(p => p.status === 'concluida')
+      .sort((a, b) => new Date(b.concluida_em || b.criado_em || 0) - new Date(a.concluida_em || a.criado_em || 0));
   }
 
   // Status de pausas do dia — erro não-crítico
@@ -585,7 +591,7 @@ function renderAll() {
   renderEquipe();
   renderPausas();
   renderFolgas();
-  renderPendencias();
+  (window.renderPendencias || renderPendencias)();
   renderAniversarios();
   renderDash();
   renderEscalaSabado();
@@ -2787,7 +2793,7 @@ async function savePendencia() {
   );
   $("pendencia-caso-aberto").checked = false;
   togglePendenciaCaso();
-  renderPendencias();
+  (window.renderPendencias || renderPendencias)();
 
   if (supa) {
     try {
@@ -2800,6 +2806,7 @@ async function savePendencia() {
         caso_aberto: pendencia.caso_aberto,
         numero_caso: pendencia.numero_caso || null,
         criado_em:   pendencia.criado_em,
+        status:      'aberta',
       });
       if (error) {
         console.warn("[savePendencia]", error);
@@ -2837,7 +2844,7 @@ window.removePendencia = async (id) => {
 
   pendencias = pendencias.filter((p) => p.id !== id);
   saveLocal();
-  renderPendencias();
+  (window.renderPendencias || renderPendencias)();
 
   if (supa) {
     try {
@@ -4273,7 +4280,7 @@ function garantirModalPausaAtrasada() {
   function renderKanban() {
     const analise   = pendencias.filter(p => !p.caso_aberto && !p._concluida);
     const comCaso   = pendencias.filter(p => p.caso_aberto  && !p._concluida);
-    const concluidas = (JSON.parse(localStorage.getItem('pitstop_pend_concl') || '[]')).slice(0,6);
+    const concluidas = (window.pendenciasConcluidas || []).slice(0,6);
 
     function setCol(colId, countId, items, template) {
       const el = document.getElementById(colId);
@@ -4310,33 +4317,62 @@ function garantirModalPausaAtrasada() {
   }
 
   // Expose helpers
-  window.moverParaCaso = (id) => {
+  window.moverParaCaso = async (id) => {
     const p = pendencias.find(x => x.id === id);
     if (!p) return;
     p.caso_aberto = true;
     saveLocal();
     renderKanban();
+    if (supa) {
+      try {
+        const { error } = await supa.from('pitstop_pendencias')
+          .update({ caso_aberto: true }).eq('id', id);
+        if (error) console.warn('[moverParaCaso] Supabase update:', error);
+      } catch (err) {
+        console.warn('[moverParaCaso] exception:', err);
+      }
+    }
   };
 
-  window.concluirKanban = (id) => {
+  window.concluirKanban = async (id) => {
     const p = pendencias.find(x => x.id === id);
     if (!p) return;
-    const hist = JSON.parse(localStorage.getItem('pitstop_pend_concl') || '[]');
-    hist.unshift({ ...p, _concluida: true, _concluidaEm: new Date().toISOString() });
-    localStorage.setItem('pitstop_pend_concl', JSON.stringify(hist.slice(0,20)));
+    const concluidaEm = new Date().toISOString();
+    // Tira da lista de abertas e coloca na lista de concluidas (compartilhada via banco).
     pendencias = pendencias.filter(x => x.id !== id);
+    window.pendenciasConcluidas = window.pendenciasConcluidas || [];
+    window.pendenciasConcluidas.unshift({ ...p, status: 'concluida', concluida_em: concluidaEm });
     saveLocal();
     renderKanban();
+    // Persiste no Supabase: marca como concluida (NAO deleta), para todos verem.
+    if (supa) {
+      try {
+        const { error } = await supa.from('pitstop_pendencias')
+          .update({ status: 'concluida', concluida_em: concluidaEm })
+          .eq('id', id);
+        if (error) console.warn('[concluirKanban] Supabase update:', error);
+      } catch (err) {
+        console.warn('[concluirKanban] exception:', err);
+      }
+    }
     toast('Pendência concluída.');
   };
 
   // Override global renderPendencias if it exists
   if (typeof renderPendencias === 'function') {
-    const origRemove = window.removePendencia;
-    window.removePendencia = (id) => {
+    window.removePendencia = async (id) => {
       pendencias = pendencias.filter(p => p.id !== id);
       saveLocal();
       renderKanban();
+      // Persiste a remocao no Supabase tambem.
+      if (supa) {
+        try {
+          const { error } = await supa.from('pitstop_pendencias').delete().eq('id', id);
+          if (error) console.warn('[removePendencia] Supabase delete:', error);
+        } catch (err) {
+          console.warn('[removePendencia] exception:', err);
+        }
+      }
       toast('Pendência removida.');
     };
   }
