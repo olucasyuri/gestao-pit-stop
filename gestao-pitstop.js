@@ -4326,9 +4326,13 @@ function garantirModalPausaAtrasada() {
 
     function cardHtml(p, type) {
       const caso = p.caso_aberto ? `<span class="cargo-badge ferias" style="font-size:10px;">Caso ${escapeHtml(p.numero_caso||'aberto')}</span>` : '';
+      const locBadge = (p.cidade || p.estado)
+        ? `<span style="font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;display:block;">📍 ${escapeHtml([p.cidade, p.estado].filter(Boolean).join(' – '))}</span>`
+        : `<span style="font-size:10px;color:rgba(255,100,100,.55);margin-top:2px;display:block;">📍 Sem localização</span>`;
       const btns = type === 'concluida'
         ? ''
         : `<div class="kanban-card-actions">
+            <button class="btn btn-small" onclick="editarPendencia('${p.id}')" style="font-size:10px;color:#94a3b8;" title="Editar">✏️</button>
             ${type === 'analise' ? `<button class="btn btn-small" onclick="moverParaCaso('${p.id}')" style="font-size:10px;color:#facc15;">+ Caso</button>` : ''}
             <button class="btn btn-small" onclick="concluirKanban('${p.id}')" style="font-size:10px;color:#4ade80;">✓ Concluir</button>
             <button class="btn btn-small" onclick="removePendencia('${p.id}')" style="font-size:10px;color:#f87171;">✕</button>
@@ -4337,6 +4341,7 @@ function garantirModalPausaAtrasada() {
         <div class="kanban-card-title">${escapeHtml(p.cliente)} ${caso}</div>
         <div class="kanban-card-meta">CNPJ ${escapeHtml(p.cnpj)} · Reg. ${escapeHtml(p.registro)}</div>
         <div class="kanban-card-motivo">${escapeHtml(p.motivo)}</div>
+        ${locBadge}
         ${btns}
       </div>`;
     }
@@ -4360,6 +4365,191 @@ function garantirModalPausaAtrasada() {
         if (error) console.warn('[moverParaCaso] Supabase update:', error);
       } catch (err) {
         console.warn('[moverParaCaso] exception:', err);
+      }
+    }
+  };
+
+  /* ── Modal de edição de pendência ── */
+  window.editarPendencia = (id) => {
+    const p = pendencias.find(x => x.id === id);
+    if (!p) return;
+
+    // Remove modal anterior se existir
+    const existing = document.getElementById('modal-editar-pendencia');
+    if (existing) existing.remove();
+
+    const UFS = [
+      {uf:'AC',nome:'Acre'},{uf:'AL',nome:'Alagoas'},{uf:'AP',nome:'Amapá'},{uf:'AM',nome:'Amazonas'},
+      {uf:'BA',nome:'Bahia'},{uf:'CE',nome:'Ceará'},{uf:'DF',nome:'Distrito Federal'},{uf:'ES',nome:'Espírito Santo'},
+      {uf:'GO',nome:'Goiás'},{uf:'MA',nome:'Maranhão'},{uf:'MT',nome:'Mato Grosso'},{uf:'MS',nome:'Mato Grosso do Sul'},
+      {uf:'MG',nome:'Minas Gerais'},{uf:'PA',nome:'Pará'},{uf:'PB',nome:'Paraíba'},{uf:'PR',nome:'Paraná'},
+      {uf:'PE',nome:'Pernambuco'},{uf:'PI',nome:'Piauí'},{uf:'RJ',nome:'Rio de Janeiro'},{uf:'RN',nome:'Rio Grande do Norte'},
+      {uf:'RS',nome:'Rio Grande do Sul'},{uf:'RO',nome:'Rondônia'},{uf:'RR',nome:'Roraima'},{uf:'SC',nome:'Santa Catarina'},
+      {uf:'SP',nome:'São Paulo'},{uf:'SE',nome:'Sergipe'},{uf:'TO',nome:'Tocantins'}
+    ];
+
+    // Dropdown customizado para evitar conflito de z-index do select nativo
+    const ufListItems = UFS.map(u =>
+      `<div data-uf="${u.uf}" style="padding:8px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-radius:6px;transition:background .15s;${(p.estado||''===u.uf)?'background:rgba(245,200,66,.15);color:#f5c842;':''}"
+        onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='${(p.estado||''===u.uf)?'rgba(245,200,66,.15)':'transparent'}'"
+        onclick="window._editPendSelectUF('${u.uf}','${u.uf} – ${u.nome}')">
+        <strong style="min-width:26px;color:#f5c842">${u.uf}</strong><span style="color:rgba(255,255,255,.6)">${u.nome}</span>
+      </div>`
+    ).join('');
+
+    const selectedUF = p.estado ? UFS.find(u => u.uf === p.estado) : null;
+    const selectedLabel = selectedUF ? `${selectedUF.uf} – ${selectedUF.nome}` : 'Selecione o estado';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-editar-pendencia';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;';
+    overlay.innerHTML = `
+      <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,.12);border-radius:16px;width:min(520px,100%);margin:auto;box-shadow:0 16px 60px rgba(0,0,0,.6);position:relative;">
+        <div style="padding:20px 20px 14px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1a1a2e;z-index:2;border-radius:16px 16px 0 0;">
+          <h2 style="margin:0;font-size:16px;font-weight:700;color:#f5c842;">✏️ Editar Pendência</h2>
+          <button onclick="document.getElementById('modal-editar-pendencia').remove()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:18px;line-height:1;padding:4px;">✕</button>
+        </div>
+        <div style="padding:18px 20px 24px;display:flex;flex-direction:column;gap:14px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Cliente</label>
+              <input id="edit-pend-cliente" value="${escapeHtml(p.cliente||'')}" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:#fff;font-size:13px;outline:none;" />
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">CNPJ</label>
+              <input id="edit-pend-cnpj" value="${escapeHtml(p.cnpj||'')}" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:#fff;font-size:13px;outline:none;" />
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Registro</label>
+            <input id="edit-pend-registro" value="${escapeHtml(p.registro||'')}" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:#fff;font-size:13px;outline:none;" />
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="position:relative;">
+              <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Estado</label>
+              <input type="hidden" id="edit-pend-estado" value="${escapeHtml(p.estado||'')}" />
+              <button type="button" id="edit-pend-estado-btn"
+                onclick="window._toggleUFDropdown()"
+                style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:${p.estado ? '#fff' : 'rgba(255,255,255,.35)'};font-size:13px;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <span id="edit-pend-estado-label">${escapeHtml(selectedLabel)}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:.5"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </button>
+              <div id="edit-pend-uf-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;background:#1e2040;border:1px solid rgba(255,255,255,.15);border-radius:10px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5);padding:4px;">
+                ${ufListItems}
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Cidade</label>
+              <input id="edit-pend-cidade" value="${escapeHtml(p.cidade||'')}" placeholder="Digite a cidade" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:#fff;font-size:13px;outline:none;" />
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Motivo da análise</label>
+            <textarea id="edit-pend-motivo" rows="3" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:#fff;font-size:13px;resize:vertical;outline:none;">${escapeHtml(p.motivo||'')}</textarea>
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:rgba(255,255,255,.8);">
+              <input type="checkbox" id="edit-pend-caso" ${p.caso_aberto ? 'checked' : ''} style="width:15px;height:15px;cursor:pointer;accent-color:#f5c842;" onchange="document.getElementById('edit-pend-caso-wrap').style.display=this.checked?'':'none'" />
+              Caso em aberto
+            </label>
+          </div>
+          <div id="edit-pend-caso-wrap" style="display:${p.caso_aberto ? '' : 'none'}">
+            <label style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Número do caso</label>
+            <input id="edit-pend-numero-caso" value="${escapeHtml(p.numero_caso||'')}" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 10px;color:#fff;font-size:13px;outline:none;" />
+          </div>
+          <div style="display:flex;gap:10px;padding-top:4px;">
+            <button onclick="salvarEdicaoPendencia('${p.id}')" style="flex:1;padding:11px;background:#f5c842;color:#0a0a0f;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">💾 Salvar alterações</button>
+            <button onclick="document.getElementById('modal-editar-pendencia').remove()" style="padding:11px 18px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.1);border-radius:8px;font-size:13px;cursor:pointer;">Cancelar</button>
+          </div>
+        </div>
+      </div>`;
+
+    // Helpers para dropdown customizado de UF
+    window._toggleUFDropdown = () => {
+      const dd = document.getElementById('edit-pend-uf-dropdown');
+      if (!dd) return;
+      dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    };
+    window._editPendSelectUF = (uf, label) => {
+      const inp = document.getElementById('edit-pend-estado');
+      const lbl = document.getElementById('edit-pend-estado-label');
+      const btn = document.getElementById('edit-pend-estado-btn');
+      const dd  = document.getElementById('edit-pend-uf-dropdown');
+      if (inp) inp.value = uf;
+      if (lbl) { lbl.textContent = label; lbl.style.color = '#fff'; }
+      if (btn) btn.style.color = '#fff';
+      if (dd) dd.style.display = 'none';
+      // Foca cidade após selecionar estado
+      setTimeout(() => document.getElementById('edit-pend-cidade')?.focus(), 50);
+    };
+
+    // Fecha dropdown ao clicar fora
+    const closeUFDropdown = (e) => {
+      const dd = document.getElementById('edit-pend-uf-dropdown');
+      const btn = document.getElementById('edit-pend-estado-btn');
+      if (dd && !dd.contains(e.target) && e.target !== btn) {
+        dd.style.display = 'none';
+      }
+    };
+    document.addEventListener('click', closeUFDropdown);
+
+    // Fechar overlay ao clicar fora do modal
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        document.removeEventListener('click', closeUFDropdown);
+        overlay.remove();
+      }
+    });
+    document.body.appendChild(overlay);
+    setTimeout(() => document.getElementById('edit-pend-cliente')?.focus(), 50);
+  };
+
+  window.salvarEdicaoPendencia = async (id) => {
+    const p = pendencias.find(x => x.id === id);
+    if (!p) return;
+
+    const cliente    = document.getElementById('edit-pend-cliente')?.value.trim();
+    const cnpj       = document.getElementById('edit-pend-cnpj')?.value.trim();
+    const registro   = document.getElementById('edit-pend-registro')?.value.trim();
+    const motivo     = document.getElementById('edit-pend-motivo')?.value.trim();
+    const estado     = document.getElementById('edit-pend-estado')?.value.trim() || '';
+    const cidade     = document.getElementById('edit-pend-cidade')?.value.trim() || '';
+    const casoAberto = document.getElementById('edit-pend-caso')?.checked || false;
+    const numeroCaso = document.getElementById('edit-pend-numero-caso')?.value.trim() || '';
+
+    if (!cliente || !cnpj || !registro || !motivo) {
+      toast('Preencha cliente, CNPJ, registro e motivo.');
+      return;
+    }
+    if (casoAberto && !numeroCaso) {
+      toast('Informe o número do caso.');
+      return;
+    }
+
+    // Atualiza objeto local
+    Object.assign(p, { cliente, cnpj, registro, motivo, estado, cidade, caso_aberto: casoAberto, numero_caso: casoAberto ? numeroCaso : '' });
+    saveLocal();
+    (window.renderPendencias || renderPendencias)();
+    document.getElementById('modal-editar-pendencia')?.remove();
+    toast('Pendência atualizada.');
+
+    // Persiste no Supabase
+    if (supa) {
+      try {
+        const updatePayload = { cliente, cnpj, registro, motivo, caso_aberto: casoAberto, numero_caso: casoAberto ? numeroCaso : null, estado: estado || null, cidade: cidade || null };
+        let { error } = await supa.from('pitstop_pendencias').update(updatePayload).eq('id', id);
+        if (error && (error.code === '42703' || String(error.code) === '400' || error.status === 400)) {
+          // Colunas estado/cidade ainda não existem — salva sem elas
+          const { error: e2 } = await supa.from('pitstop_pendencias')
+            .update({ cliente, cnpj, registro, motivo, caso_aberto: casoAberto, numero_caso: casoAberto ? numeroCaso : null })
+            .eq('id', id);
+          error = e2;
+        }
+        if (error) console.warn('[salvarEdicaoPendencia]', error);
+      } catch (err) {
+        console.warn('[salvarEdicaoPendencia] exception:', err);
       }
     }
   };
