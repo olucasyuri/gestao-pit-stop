@@ -627,7 +627,7 @@ async function renderDashboardCharts() {
       '</div>' +
     '</div>' +
     mapaNota +
-    '<button class="dc2-link-btn" onclick="document.querySelector('[data-tab=pendencias]').click()" type="button">Ver todas as pendências →</button>' +
+    '<button class="dc2-link-btn" onclick="document.querySelector(&quot;[data-tab=pendencias]&quot;).click()" type="button">Ver todas as pend\u00eancias \u2192</button>' +
   '</div>';
 
   /* ── Montagem final ── */

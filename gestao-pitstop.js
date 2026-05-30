@@ -2801,7 +2801,8 @@ async function savePendencia() {
 
   if (supa) {
     try {
-      const { error } = await supa.from("pitstop_pendencias").insert({
+      // Tenta inserir com campos de localização; se as colunas ainda não existem, tenta sem elas
+      let insertPayload = {
         id:          pendencia.id,
         cliente:     pendencia.cliente,
         cnpj:        pendencia.cnpj,
@@ -2813,7 +2814,24 @@ async function savePendencia() {
         cidade:      pendencia.cidade || null,
         criado_em:   pendencia.criado_em,
         status:      'aberta',
-      });
+      };
+      let { error } = await supa.from("pitstop_pendencias").insert(insertPayload);
+      if (error && (error.code === '42703' || error.message?.includes('column') || String(error.code) === '400' || error.status === 400)) {
+        // Colunas estado/cidade não existem ainda — salva sem elas
+        console.warn("[savePendencia] Colunas estado/cidade não encontradas, salvando sem localização. Execute o SQL de migração.", error);
+        const { error: error2 } = await supa.from("pitstop_pendencias").insert({
+          id:          pendencia.id,
+          cliente:     pendencia.cliente,
+          cnpj:        pendencia.cnpj,
+          registro:    pendencia.registro,
+          motivo:      pendencia.motivo,
+          caso_aberto: pendencia.caso_aberto,
+          numero_caso: pendencia.numero_caso || null,
+          criado_em:   pendencia.criado_em,
+          status:      'aberta',
+        });
+        error = error2;
+      }
       if (error) {
         console.warn("[savePendencia]", error);
         toast("Pendência adicionada localmente (falha ao sincronizar).");
