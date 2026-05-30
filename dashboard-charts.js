@@ -539,11 +539,103 @@ async function renderDashboardCharts() {
     '</div>' +
   '</div>';
 
+  /* ── Card Mapa de Pendências por Região ── */
+  // Agrupa pendências abertas por estado
+  var pendAbertas_arr = pendencias.filter(function(p){ return !p._concluida && p.status !== 'concluida'; });
+  var porEstado = {};
+  pendAbertas_arr.forEach(function(p) {
+    if (p.estado) {
+      porEstado[p.estado] = (porEstado[p.estado] || 0) + 1;
+    }
+  });
+  var semEstado = pendAbertas_arr.filter(function(p){ return !p.estado; }).length;
+
+  // Mapa de regiões do Brasil
+  var regioes = {
+    'Norte':     ['AM','PA','AC','RO','RR','AP','TO'],
+    'Nordeste':  ['MA','PI','CE','RN','PB','PE','AL','SE','BA'],
+    'Centro-Oeste': ['MT','MS','GO','DF'],
+    'Sudeste':   ['SP','RJ','MG','ES'],
+    'Sul':       ['PR','SC','RS']
+  };
+  var coresRegiao = {
+    'Norte': '#4ade80',
+    'Nordeste': '#f59e0b',
+    'Centro-Oeste': '#a78bfa',
+    'Sudeste': '#fb923c',
+    'Sul': '#38bdf8'
+  };
+  var porRegiao = {};
+  Object.keys(regioes).forEach(function(reg) {
+    porRegiao[reg] = regioes[reg].reduce(function(acc, uf) { return acc + (porEstado[uf] || 0); }, 0);
+  });
+  var totalComLoc = Object.keys(porEstado).reduce(function(acc, k){ return acc + porEstado[k]; }, 0);
+  var maxRegiao = Math.max.apply(null, Object.keys(porRegiao).map(function(r){ return porRegiao[r]; }).concat([1]));
+
+  // Ranking top estados
+  var rankEstados = Object.keys(porEstado).map(function(uf){ return { uf: uf, n: porEstado[uf] }; })
+    .sort(function(a,b){ return b.n - a.n; }).slice(0, 5);
+
+  // Build bar rows for regiões
+  var regiaoRows = Object.keys(regioes).map(function(reg) {
+    var n = porRegiao[reg];
+    var cor = coresRegiao[reg];
+    var pct = n > 0 ? Math.max(4, Math.round((n / maxRegiao) * 100)) : 0;
+    var estados_lista = regioes[reg].filter(function(uf){ return porEstado[uf] > 0; })
+      .map(function(uf){ return uf + '(' + porEstado[uf] + ')'; }).join(', ');
+    return '<div style="margin-bottom:9px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+        '<span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.85)">' + reg + '</span>' +
+        '<span style="font-size:13px;font-weight:700;color:' + cor + '">' + n + '</span>' +
+      '</div>' +
+      '<div style="background:rgba(255,255,255,.07);border-radius:4px;height:8px;overflow:hidden">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + cor + ';border-radius:4px;transition:width .4s ease;box-shadow:0 0 8px ' + cor + '50"></div>' +
+      '</div>' +
+      (estados_lista ? '<div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:3px">' + dcEsc(estados_lista) + '</div>' : '') +
+    '</div>';
+  }).join('');
+
+  // Top estados ranking
+  var topEstadosHtml = rankEstados.length > 0
+    ? rankEstados.map(function(item, i) {
+        var reg = Object.keys(regioes).find(function(r){ return regioes[r].indexOf(item.uf) !== -1; }) || '';
+        var cor = coresRegiao[reg] || DC.orange;
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">' +
+          '<span style="font-size:11px;color:rgba(255,255,255,.3);min-width:14px">' + (i+1) + 'º</span>' +
+          '<div style="width:28px;height:28px;border-radius:6px;background:' + cor + '20;border:1px solid ' + cor + '40;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:' + cor + '">' + dcEsc(item.uf) + '</div>' +
+          '<span style="flex:1;font-size:12px;color:rgba(255,255,255,.8)">' + dcEsc(item.uf) + '</span>' +
+          '<span style="font-size:13px;font-weight:700;color:' + cor + '">' + item.n + '</span>' +
+        '</div>';
+      }).join('')
+    : '<div style="font-size:12px;color:rgba(255,255,255,.3);padding:8px 0">Nenhuma pendência com localização</div>';
+
+  var mapaNota = semEstado > 0
+    ? '<div style="font-size:10.5px;color:rgba(255,255,255,.3);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)">⚠ ' + semEstado + ' pendência(s) sem localização cadastrada</div>'
+    : '';
+
+  var cardMapaRegiao = '<div class="dc2-card" style="grid-column:span 2">' +
+    '<div class="dc2-card-header">📍<span>Pendências por Região</span>' +
+    '<div class="dc2-header-pills"><span class="dc2-pill" style="background:rgba(251,146,60,.12);color:' + DC.orange + ';border-color:rgba(251,146,60,.2)">' + totalComLoc + ' localizadas</span></div></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px">' +
+      '<div>' +
+        '<div style="font-size:10.5px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Por Região</div>' +
+        regiaoRows +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:10.5px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Top Estados</div>' +
+        topEstadosHtml +
+      '</div>' +
+    '</div>' +
+    mapaNota +
+    '<button class="dc2-link-btn" onclick="document.querySelector('[data-tab=pendencias]').click()" type="button">Ver todas as pendências →</button>' +
+  '</div>';
+
   /* ── Montagem final ── */
   container.innerHTML =
     kpiRow +
     '<div class="dc2-row-3">' + cardFolgasFerias + cardEquipe + cardPausas + '</div>' +
-    '<div class="dc2-row-3">' + cardPendencias + cardImportacoes + cardAtividade + '</div>';
+    '<div class="dc2-row-3">' + cardPendencias + cardImportacoes + cardAtividade + '</div>' +
+    '<div class="dc2-row-mapa">' + cardMapaRegiao + '</div>';
   
   // Libera flag de renderização
   dashboardIsRendering = false;
@@ -674,9 +766,10 @@ function dcAbrirModal(cardId) {
         var nome = p.cliente||p.nome||p.colaborador||'Pendência';
         var dt = p.criado_em ? new Date(p.criado_em).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
         var dtConc = p._concluidaEm ? ' · Concluída ' + new Date(p._concluidaEm).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+        var locStr = (p.cidade || p.estado) ? ' · 📍' + [p.cidade, p.estado].filter(Boolean).join(', ') : '';
         return '<div class="dcm-row">' +
           '<div class="dcm-av" style="background:rgba(251,146,60,.12);color:' + DC.orange + '">' + dcEsc(nome.charAt(0).toUpperCase()) + '</div>' +
-          '<div class="dcm-info"><strong>' + dcEsc(nome) + '</strong><span>' + (p.cnpj?'CNPJ '+dcEsc(p.cnpj)+' ':'')+dt+dtConc + '</span></div>' +
+          '<div class="dcm-info"><strong>' + dcEsc(nome) + '</strong><span>' + (p.cnpj?'CNPJ '+dcEsc(p.cnpj)+' ':'')+dt+dtConc+dcEsc(locStr) + '</span></div>' +
           '<div class="dcm-badge" style="color:' + cor2 + '">' + badge + '</div>' +
         '</div>';
       }).join('');
@@ -786,6 +879,13 @@ function injectDcCSS() {
 .dcm-section-title { font-size:11px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; margin-bottom:6px; padding:0 2px; opacity:.8; }
 
 /* Rows de 3 colunas */
+.dc2-row-mapa {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .dc2-row-3 {
   display: grid;
   grid-template-columns: 1.6fr 1fr 1fr;

@@ -2181,6 +2181,7 @@ function renderPendencias() {
           <div class="pendencia-meta">
             <span>CNPJ ${escapeHtml(p.cnpj)}</span>
             <span>Registro ${escapeHtml(p.registro)}</span>
+            ${p.cidade || p.estado ? `<span>📍 ${[p.cidade, p.estado].filter(Boolean).join(' – ')}</span>` : ''}
           </div>
           <p>${escapeHtml(p.motivo)}</p>
         </div>
@@ -2773,6 +2774,8 @@ async function savePendencia() {
     motivo: $("pendencia-motivo").value.trim(),
     caso_aberto: casoAberto,
     numero_caso: casoAberto ? $("pendencia-numero-caso").value.trim() : "",
+    estado: $("pendencia-estado")?.value.trim() || "",
+    cidade: $("pendencia-cidade")?.value.trim() || "",
     criado_em: new Date().toISOString(),
   };
 
@@ -2788,10 +2791,11 @@ async function savePendencia() {
 
   pendencias.unshift(pendencia);
   saveLocal();
-  ["pendencia-cliente", "pendencia-cnpj", "pendencia-registro", "pendencia-motivo", "pendencia-numero-caso"].forEach(
+  ["pendencia-cliente", "pendencia-cnpj", "pendencia-registro", "pendencia-motivo", "pendencia-numero-caso", "pendencia-cidade"].forEach(
     (id) => ($(id).value = "")
   );
   $("pendencia-caso-aberto").checked = false;
+  if ($("pendencia-estado")) $("pendencia-estado").value = "";
   togglePendenciaCaso();
   (window.renderPendencias || renderPendencias)();
 
@@ -2805,6 +2809,8 @@ async function savePendencia() {
         motivo:      pendencia.motivo,
         caso_aberto: pendencia.caso_aberto,
         numero_caso: pendencia.numero_caso || null,
+        estado:      pendencia.estado || null,
+        cidade:      pendencia.cidade || null,
         criado_em:   pendencia.criado_em,
         status:      'aberta',
       });
@@ -2821,6 +2827,12 @@ async function savePendencia() {
   }
 
   toast("Pendência adicionada." + (supa ? "" : " (modo local)"));
+}
+
+/** Foco no campo cidade ao selecionar estado. */
+function atualizarCidadesPendencia() {
+  const cidadeInput = $("pendencia-cidade");
+  if (cidadeInput) cidadeInput.focus();
 }
 
 /** Mostra ou oculta o campo de número do caso. */
